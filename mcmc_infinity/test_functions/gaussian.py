@@ -7,7 +7,7 @@ class Gaussian:
 
     The log-posterior of the target distribution is defined as:
     .. math::
-        f(x) = -(1/2) \sum_{i=1}^{n} x_i^2 / \sigma^2
+        f(x) = -(1/2) \\sum_{i=1}^{n} x_i^2 / \\sigma^2
     where n is the dimensionality.
     """
 

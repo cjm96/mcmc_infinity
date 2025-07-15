@@ -8,10 +8,10 @@ class GaussianShells:
 
     The log-posterior of the target distribution is defined as:
     .. math::
-        f(x) = \log ( circ(x; c_1, r, w) + circ(x; c_1, r, w) )
+        f(x) = \\log ( circ(x; c_1, r, w) + circ(x; c_2, r, w) )
     where
     .. math::
-        circ(x; c, r, w) = \exp( -(|x-c|-r)^2 / (2w^2) ) / \sqrt{2\pi w^1}
+        circ(x; c, r, w) = \\exp( -(|x-c|-r)^2 / (2w^2) ) / \\sqrt{2\\pi w^1}
     and where c1 and c2 are the vectors of coordinates of the centres of the two 
     rings, r is the radius of the rings and w is their width.
     

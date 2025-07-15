@@ -3,9 +3,9 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import time
 
-from  mcmc_infinity.code.uniform_proposal \
+from mcmc_infinity.code.uniform_proposal \
     import UniformProposal as Quniform
-from  mcmc_infinity.code.symmetric_gaussian_proposal \
+from mcmc_infinity.code.symmetric_gaussian_proposal \
     import SymmetricGaussianProposal as Qsymgauss
 
 
@@ -251,3 +251,5 @@ class PerfectSampler:
             samples = samples.at[i].set(self.get_perfect_sample(T))
 
         return samples
+    
+    

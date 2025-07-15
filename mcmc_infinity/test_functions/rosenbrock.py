@@ -7,7 +7,7 @@ class Rosenbrock:
 
     The log-posterior of the target distribution is defined as:
     .. math::
-        f(x) = -\sum_{i=1}^{n-1} ( 100 (x_{i+1}-x_{i}^2)^2 + (1-x_{i})^2 )
+        f(x) = -\\sum_{i=1}^{n-1} ( 100 (x_{i+1}-x_{i}^2)^2 + (1-x_{i})^2 )
     where n is the dimensionality.
     """
 
