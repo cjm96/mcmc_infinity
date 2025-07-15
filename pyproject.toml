@@ -1,0 +1,22 @@
+[project]
+name = "mcmc_infinity"
+version = "0.0.1"
+authors = [
+  { name="Christopher J. Moore", email="cjm96@cam.ac.uk"},
+]
+description = "An implementation of pefect MCMC sampling - also know as MCMC with coupling from the past - for Bayesian inference tasks in astronomy and astrophysics."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "jax"
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]

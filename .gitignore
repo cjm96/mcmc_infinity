@@ -1,0 +1,8 @@
+*.DS_Store
+*/.DS_Store
+*/*/.DS_Store
+*/*/*/.DS_Store
+
+mcmc_infinity/__pycache__/*
+mcmc_infinity/code/__pycache__/*
+mcmc_infinity/test_functions/__pycache__/*
