@@ -181,7 +181,7 @@ class PerfectSampler:
 
         return chains
 
-    def get_perfect_sample(self, T, show_all_output=False):
+    def get_perfect_sample(self, T, show_all_output=False, verbose=False):
         """
         Generate a single perfect sample from the target distribution.
 
@@ -192,6 +192,9 @@ class PerfectSampler:
         show_all_output : bool, optional
             If True, return all output chains for diagnosing problems.
             Default is False, which returns only the final sample.
+        verbose : bool, optional
+            If True, print the current number of steps being tried.
+            Default is False.
 
         RETURNS
         -------
@@ -209,7 +212,7 @@ class PerfectSampler:
         all_output = []
 
         while not coalesced:
-            if show_all_output:
+            if verbose:
                 print(f"Trying T={T} steps...")
             self.key, subkey = jax.random.split(self.key)
             new_seeds = jax.random.randint(subkey, 
@@ -235,7 +238,7 @@ class PerfectSampler:
         else:
             return sample
 
-    def get_perfect_samples(self, T, num_samples):
+    def get_perfect_samples(self, T, num_samples, verbose=False):
         """
         Generate perfect samples from the target distribution.
 
@@ -252,7 +255,7 @@ class PerfectSampler:
         samples = jnp.zeros((num_samples, self.dim))
 
         for i in range(num_samples):
-            samples = samples.at[i].set(self.get_perfect_sample(T))
+            samples = samples.at[i].set(self.get_perfect_sample(T, verbose=verbose))
 
         return samples
     
