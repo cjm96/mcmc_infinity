@@ -2,11 +2,14 @@ import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import time
+import tqdm
 
 from mcmc_infinity.code.uniform_proposal \
     import UniformProposal as Quniform
 from mcmc_infinity.code.symmetric_gaussian_proposal \
     import SymmetricGaussianProposal as Qsymgauss
+from mcmc_infinity.code.normalizing_flow_proposal \
+    import NormalizingFlowProposal as Qflow
 
 
 class PerfectSampler:
@@ -83,16 +86,17 @@ class PerfectSampler:
         accept : bool
             Whether the proposed move was accepted.
         """
-        key = jax.random.key(xi)
-
-        key, subkey = jax.random.split(key)
         if isinstance(self.proposal, Quniform):
             Qargs = ()
         elif isinstance(self.proposal, Qsymgauss):
             Qargs = (x, self.proposal_kwargs['sigma'])
+        elif isinstance(self.proposal, Qflow):
+            Qargs = ()
         else:
             raise ValueError(f"Unrecognised proposal type {self.proposal_type}")
-        
+
+        key = jax.random.key(xi)
+        key, subkey = jax.random.split(key)
         y = self.proposal.sample(subkey, *Qargs)
 
         key, subkey = jax.random.split(key)
@@ -178,7 +182,7 @@ class PerfectSampler:
 
         return chains
 
-    def get_perfect_sample(self, T, show_all_output=False):
+    def get_perfect_sample(self, T, show_all_output=False, verbose=False):
         """
         Generate a single perfect sample from the target distribution.
 
@@ -189,6 +193,9 @@ class PerfectSampler:
         show_all_output : bool, optional
             If True, return all output chains for diagnosing problems.
             Default is False, which returns only the final sample.
+        verbose : bool, optional
+            If True, print the current number of steps being tried.
+            Default is False.
 
         RETURNS
         -------
@@ -197,7 +204,7 @@ class PerfectSampler:
         all_output : list of jnp.ndarray
             Only returned if show_all_output is True.
         """
-        coalesced = False
+        coupled = False
 
         seeds = jnp.array([], dtype=jnp.uint64)
 
@@ -205,22 +212,27 @@ class PerfectSampler:
 
         all_output = []
 
-        while not coalesced:
-            
+        while not coupled:
+            if verbose:
+                print(f"Trying T={T} steps...")
             self.key, subkey = jax.random.split(self.key)
             new_seeds = jax.random.randint(subkey, 
                                    (T//2,), 
                                    0, jnp.iinfo(jnp.int64).max, 
                                    dtype=jnp.uint64)
-            
+
             seeds = jnp.concatenate((new_seeds, seeds))
-            
+
             chains = self.try_mcmc(seeds)
 
             if show_all_output:
                 all_output.append(chains)
 
-            coalesced = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], axis=0))
+            if self.num_chains > 1:
+                coupled = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], 
+                                          axis=0))
+            else:
+                coupled = jnp.any(jnp.not_equal(chains[0,-1,:], chains[0,0,:]))
 
             T *= 2
 
@@ -231,7 +243,7 @@ class PerfectSampler:
         else:
             return sample
 
-    def get_perfect_samples(self, T, num_samples):
+    def get_perfect_samples(self, T, num_samples, verbose=False):
         """
         Generate perfect samples from the target distribution.
 
@@ -247,9 +259,8 @@ class PerfectSampler:
         """
         samples = jnp.zeros((num_samples, self.dim))
 
-        for i in range(num_samples):
-            samples = samples.at[i].set(self.get_perfect_sample(T))
+        for i in tqdm.trange(num_samples):
+            samples = samples.at[i].set(self.get_perfect_sample(T, verbose=verbose))
 
         return samples
-    
     
