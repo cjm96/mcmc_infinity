@@ -4,12 +4,9 @@ import jax.numpy as jnp
 import time
 import tqdm
 
-from mcmc_infinity.code.uniform_proposal \
-    import UniformProposal as Quniform
-from mcmc_infinity.code.symmetric_gaussian_proposal \
-    import SymmetricGaussianProposal as Qsymgauss
-from mcmc_infinity.code.normalizing_flow_proposal \
-    import NormalizingFlowProposal as Qflow
+from .uniform_proposal import UniformProposal as Quniform
+from .symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
+from .normalizing_flow_proposal import NormalizingFlowProposal as Qflow
 
 
 class PerfectSampler:
