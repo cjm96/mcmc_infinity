@@ -245,7 +245,7 @@ class PerfectSampler:
 
         outputs = (sample,)
         if return_T:
-            outputs += (T,)
+            outputs += (T / 2,)
         if show_all_output:
             outputs += (all_output,)
         return outputs
