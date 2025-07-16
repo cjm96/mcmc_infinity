@@ -182,7 +182,7 @@ class PerfectSampler:
 
         return chains
 
-    def get_perfect_sample(self, T, show_all_output=False, verbose=False):
+    def get_perfect_sample(self, T, show_all_output=False, verbose=False, return_T=False):
         """
         Generate a single perfect sample from the target distribution.
 
@@ -196,11 +196,16 @@ class PerfectSampler:
         verbose : bool, optional
             If True, print the current number of steps being tried.
             Default is False.
+        return_T : bool, optional
+            If True, return the final number of steps T used.
+            Default is False, which returns only the sample.
 
         RETURNS
         -------
         sample : jnp.ndarray, shape=(self.dim,)
             A single sample from the target distribution.
+        T : int, optional
+            Only returned if return_T is True. The final number of steps used.
         all_output : list of jnp.ndarray
             Only returned if show_all_output is True.
         """
@@ -238,10 +243,12 @@ class PerfectSampler:
 
         sample = chains[0,-1,:]
 
+        outputs = (sample,)
+        if return_T:
+            outputs += (T,)
         if show_all_output:
-            return sample, all_output
-        else:
-            return sample
+            outputs += (all_output,)
+        return outputs
 
     def get_perfect_samples(self, T, num_samples, verbose=False):
         """
@@ -256,11 +263,14 @@ class PerfectSampler:
         -------
         samples : jnp.ndarray, shape=(num_samples, self.dim)
             I.i.d. perfect samples from the target distribution.
+        t_vals : jnp.ndarray, shape=(num_samples,), dtype=jnp.int32
+            The number of steps T used for each sample.
         """
         samples = jnp.zeros((num_samples, self.dim))
+        t_vals = jnp.zeros((num_samples,), dtype=jnp.int32)
 
         for i in tqdm.trange(num_samples):
-            samples = samples.at[i].set(self.get_perfect_sample(T, verbose=verbose))
-
-        return samples
-    
+            s, t = self.get_perfect_sample(T, verbose=verbose, return_T=True)
+            samples = samples.at[i].set(s)
+            t_vals = t_vals.at[i].set(t)
+        return samples, t_vals
