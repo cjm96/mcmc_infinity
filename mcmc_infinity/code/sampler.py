@@ -2,6 +2,7 @@ import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import time
+import tqdm
 
 from mcmc_infinity.code.uniform_proposal \
     import UniformProposal as Quniform
@@ -258,7 +259,7 @@ class PerfectSampler:
         """
         samples = jnp.zeros((num_samples, self.dim))
 
-        for i in range(num_samples):
+        for i in tqdm.trange(num_samples):
             samples = samples.at[i].set(self.get_perfect_sample(T, verbose=verbose))
 
         return samples

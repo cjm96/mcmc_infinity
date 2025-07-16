@@ -13,7 +13,9 @@ dependencies = [
     "scipy",
     "matplotlib",
     "seaborn",
-    "jax"
+    "jax",
+    "tqdm",
+    "flowjax",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
