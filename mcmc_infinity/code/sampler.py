@@ -203,7 +203,7 @@ class PerfectSampler:
         all_output : list of jnp.ndarray
             Only returned if show_all_output is True.
         """
-        coalesced = False
+        coupled = False
 
         seeds = jnp.array([], dtype=jnp.uint64)
 
@@ -211,7 +211,7 @@ class PerfectSampler:
 
         all_output = []
 
-        while not coalesced:
+        while not coupled:
             if verbose:
                 print(f"Trying T={T} steps...")
             self.key, subkey = jax.random.split(self.key)
@@ -227,7 +227,11 @@ class PerfectSampler:
             if show_all_output:
                 all_output.append(chains)
 
-            coalesced = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], axis=0))
+            if self.num_chains > 1:
+                coupled = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], 
+                                          axis=0))
+            else:
+                coupled = jnp.any(jnp.not_equal(chains[0,-1,:], chains[0,0,:]))
 
             T *= 2
 
