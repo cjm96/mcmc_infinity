@@ -88,8 +88,6 @@ class NormalizingFlowProposal:
                 "A random key will be used for the flow. "
                 "Results may not be reproducible."
             )
-        self.loc = None
-        self.scale = None
         self._flow = get_flow(
             key=key,
             dims=dim,
