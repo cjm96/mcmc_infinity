@@ -7,6 +7,8 @@ from mcmc_infinity.code.uniform_proposal \
     import UniformProposal as Quniform
 from mcmc_infinity.code.symmetric_gaussian_proposal \
     import SymmetricGaussianProposal as Qsymgauss
+from mcmc_infinity.code.normalizing_flow_proposal \
+    import NormalizingFlowProposal as Qflow
 
 
 class PerfectSampler:
@@ -83,16 +85,17 @@ class PerfectSampler:
         accept : bool
             Whether the proposed move was accepted.
         """
-        key = jax.random.key(xi)
-
-        key, subkey = jax.random.split(key)
         if isinstance(self.proposal, Quniform):
             Qargs = ()
         elif isinstance(self.proposal, Qsymgauss):
             Qargs = (x, self.proposal_kwargs['sigma'])
+        elif isinstance(self.proposal, Qflow):
+            Qargs = ()
         else:
             raise ValueError(f"Unrecognised proposal type {self.proposal_type}")
-        
+
+        key = jax.random.key(xi)
+        key, subkey = jax.random.split(key)
         y = self.proposal.sample(subkey, *Qargs)
 
         key, subkey = jax.random.split(key)
@@ -206,15 +209,16 @@ class PerfectSampler:
         all_output = []
 
         while not coalesced:
-            
+            if show_all_output:
+                print(f"Trying T={T} steps...")
             self.key, subkey = jax.random.split(self.key)
             new_seeds = jax.random.randint(subkey, 
                                    (T//2,), 
                                    0, jnp.iinfo(jnp.int64).max, 
                                    dtype=jnp.uint64)
-            
+
             seeds = jnp.concatenate((new_seeds, seeds))
-            
+
             chains = self.try_mcmc(seeds)
 
             if show_all_output:
@@ -251,5 +255,4 @@ class PerfectSampler:
             samples = samples.at[i].set(self.get_perfect_sample(T))
 
         return samples
-    
     
