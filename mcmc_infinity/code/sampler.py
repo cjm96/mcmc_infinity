@@ -245,32 +245,49 @@ class PerfectSampler:
 
         outputs = (sample,)
         if return_T:
-            outputs += (T / 2,)
+            outputs += (T/2,)
         if show_all_output:
             outputs += (all_output,)
         return outputs
 
-    def get_perfect_samples(self, T, num_samples, verbose=False):
+    def get_perfect_samples(self, T, num_samples, verbose=False, return_T=False):
         """
         Generate perfect samples from the target distribution.
 
         INPUTS:
         -------
+        T : int
+            The initial number of steps to try for each sample.
         num_samples : int
             The number of samples to generate. 
+        verbose : bool, optional
+            If True, print the current number of steps being tried.
+            Default is False.
+        return_T : bool, optional
+            If True, return the final number of steps T used.
+            Default is False, which returns only the sample.
 
         RETURNS
         -------
         samples : jnp.ndarray, shape=(num_samples, self.dim)
             I.i.d. perfect samples from the target distribution.
         t_vals : jnp.ndarray, shape=(num_samples,), dtype=jnp.int32
+            Only returned if return_T is True. 
             The number of steps T used for each sample.
         """
         samples = jnp.zeros((num_samples, self.dim))
         t_vals = jnp.zeros((num_samples,), dtype=jnp.int32)
 
         for i in tqdm.trange(num_samples):
-            s, t = self.get_perfect_sample(T, verbose=verbose, return_T=True)
-            samples = samples.at[i].set(s)
-            t_vals = t_vals.at[i].set(t)
-        return samples, t_vals
+            if return_T:
+                s, t = self.get_perfect_sample(T, verbose=verbose, return_T=return_T)
+                samples = samples.at[i].set(s)
+                t_vals = t_vals.at[i].set(t)
+            else:
+                s, = self.get_perfect_sample(T, verbose=verbose, return_T=return_T)
+                samples = samples.at[i].set(s)
+        
+        if return_T:
+            return samples, t_vals
+        else:
+            return samples
