@@ -1,4 +1,4 @@
-import numpy as np
+import jax.numpy as jnp
 
 
 class Rastrigin:
@@ -41,9 +41,9 @@ class Rastrigin:
         logl : array-like, shape=(...,)
             The log-posterior of the target function.
         """
-        x = np.asarray(x)
+        x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = -self.A*self.dim - np.sum(x**2-self.A*np.cos(2*np.pi*x), axis=-1)
+        logl = -self.A*self.dim - jnp.sum(x**2-self.A*jnp.cos(2*jnp.pi*x), axis=-1)
         return self.alpha * logl
 
     def __call__(self, x):
@@ -56,10 +56,10 @@ if __name__ == "__main__":
 
     R = Rastrigin()
 
-    x = np.linspace(-5.12, 5.12, 300)
-    y = np.linspace(-5.12, 5.12, 300)
-    X, Y = np.meshgrid(x, y)
-    Z = R(np.stack((X,Y), axis=-1))
+    x = jnp.linspace(-5.12, 5.12, 300)
+    y = jnp.linspace(-5.12, 5.12, 300)
+    X, Y = jnp.meshgrid(x, y)
+    Z = R(jnp.stack((X,Y), axis=-1))
     
     fig, ax = plt.subplots(figsize=(8, 6))
 

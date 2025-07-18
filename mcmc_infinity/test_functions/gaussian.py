@@ -1,4 +1,4 @@
-import numpy as np
+import jax.numpy as jnp
 
 
 class Gaussian:
@@ -37,9 +37,9 @@ class Gaussian:
         logl : array-like, shape=(...,)
             The log-posterior of the target function.
         """
-        x = np.asarray(x)
+        x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = -0.5 * np.sum(x**2 / self.sigma**2, axis=-1)
+        logl = -0.5 * jnp.sum(x**2 / self.sigma**2, axis=-1)
         return logl
 
     def __call__(self, x):
@@ -52,10 +52,10 @@ if __name__ == "__main__":
 
     G = Gaussian()
 
-    x = np.linspace(-5, 5, 300)
-    y = np.linspace(-5, 5, 300)
-    X, Y = np.meshgrid(x, y)
-    Z = G(np.stack((X,Y), axis=-1))
+    x = jnp.linspace(-5, 5, 300)
+    y = jnp.linspace(-5, 5, 300)
+    X, Y = jnp.meshgrid(x, y)
+    Z = G(jnp.stack((X,Y), axis=-1))
     
     fig, ax = plt.subplots(figsize=(8, 6))
 

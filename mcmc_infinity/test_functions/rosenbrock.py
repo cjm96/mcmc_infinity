@@ -1,4 +1,4 @@
-import numpy as np
+import jax.numpy as jnp
 
 
 class Rosenbrock:
@@ -33,11 +33,12 @@ class Rosenbrock:
         logl : array-like, shape=(...,)
             The log-posterior of the target function.
         """
-        x = np.asarray(x)
+        x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        mask = (np.arange(self.dim)<self.dim-1)
-        logl = -np.sum(100*(np.roll(x,-1,axis=-1)[...,mask]-x[...,mask]**2)**2
-                      +(1-x[...,mask])**2, axis=-1)
+
+        x0 = x[..., :-1]
+        x1 = x[..., 1:]
+        logl = -jnp.sum(100 * (x1 - x0**2)**2 + (1 - x0)**2, axis=-1)
         return logl
 
     def __call__(self, x):
@@ -50,14 +51,14 @@ if __name__ == "__main__":
 
     R = Rosenbrock()
 
-    x = np.linspace(-1, 3, 300)
-    y = np.linspace(-1, 6, 300)
-    X, Y = np.meshgrid(x, y)
-    Z = R(np.stack((X,Y), axis=-1))
+    x = jnp.linspace(-1, 3, 300)
+    y = jnp.linspace(-1, 6, 300)
+    X, Y = jnp.meshgrid(x, y)
+    Z = R(jnp.stack((X,Y), axis=-1))
     
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    levels = np.linspace(-60, 0, 7)
+    levels = jnp.linspace(-60, 0, 7)
     x = ax.contourf(X, Y, Z, levels=levels)
     cbar = plt.colorbar(x)
 

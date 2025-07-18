@@ -7,6 +7,7 @@ import tqdm
 from .uniform_proposal import UniformProposal as Quniform
 from .symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
 from .normalizing_flow_proposal import NormalizingFlowProposal as Qflow
+from .kde_proposal import KernelDensityEstimateProposal as Qkde
 
 
 class PerfectSampler:
@@ -88,6 +89,8 @@ class PerfectSampler:
         elif isinstance(self.proposal, Qsymgauss):
             Qargs = (x, self.proposal_kwargs['sigma'])
         elif isinstance(self.proposal, Qflow):
+            Qargs = ()
+        elif isinstance(self.proposal, Qkde):
             Qargs = ()
         else:
             raise ValueError(f"Unrecognised proposal type {self.proposal_type}")

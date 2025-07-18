@@ -58,9 +58,13 @@ class KernelDensityEstimateProposal:
         samples : jnp.ndarray, shape=(num_samples, dim)
             Samples from the normalizing flow proposal distribution.
         """
-        samples = self.kde.resample(key, shape=(num_samples,))
+        if num_samples is None:
+            samples = self.kde.resample(key)
+        else:
+            samples = self.kde.resample(key, shape=(int(num_samples),))
+            samples = samples.T
 
-        return samples.T
+        return samples
 
     def logP(self, x):
         """

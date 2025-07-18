@@ -1,5 +1,5 @@
-import numpy as np
-from scipy.special import logsumexp
+import jax.numpy as jnp
+from jax.scipy.special import logsumexp
 
 
 class GaussianShells:
@@ -41,10 +41,10 @@ class GaussianShells:
         assert self.dim > 0, "dimension must be positive"
 
         # The centres of the two Gaussian shells
-        self.c1 = np.zeros(self.dim)
-        self.c2 = np.zeros(self.dim)
-        self.c1[0] = -self.s / 2.0
-        self.c2[0] = +self.s / 2.0
+        self.c1 = jnp.zeros(self.dim)
+        self.c2 = jnp.zeros(self.dim)
+        self.c1 = self.c1.at[0].set(-self.s / 2.0)
+        self.c2 = self.c2.at[0].set(+self.s / 2.0)
 
     def log_circ(self, x, c, r, w):
         """
@@ -64,10 +64,10 @@ class GaussianShells:
         ans : array-like, shape=(...,)
             The circ function value.
         """
-        x = np.asarray(x)
+        x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        d = np.linalg.norm(x - c, axis=-1)
-        return -0.5*(d-r)**2 / w**2 - 0.5 * np.log(2*np.pi*w**2)
+        d = jnp.linalg.norm(x - c, axis=-1)
+        return -0.5*(d-r)**2 / w**2 - 0.5 * jnp.log(2*jnp.pi*w**2)
 
     def logP(self, x):
         """
@@ -81,10 +81,10 @@ class GaussianShells:
         logl : array-like, shape=(...,)
             The log-posterior of the target function.
         """
-        x = np.asarray(x)
+        x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = logsumexp([self.log_circ(x, self.c1, self.r, self.w),
-                          self.log_circ(x, self.c2, self.r, self.w)]
+        logl = logsumexp(jnp.array([self.log_circ(x, self.c1, self.r, self.w),
+                          self.log_circ(x, self.c2, self.r, self.w)])
                         , axis=0)
         return logl
 
@@ -98,14 +98,14 @@ if __name__ == "__main__":
 
     shells = GaussianShells()
 
-    x = np.linspace(-8, 8, 300)
-    y = np.linspace(-8, 8, 300)
-    X, Y = np.meshgrid(x, y)
-    Z = shells(np.stack((X,Y), axis=-1))
+    x = jnp.linspace(-8, 8, 300)
+    y = jnp.linspace(-8, 8, 300)
+    X, Y = jnp.meshgrid(x, y)
+    Z = shells(jnp.stack((X,Y), axis=-1))
     
     fig, ax = plt.subplots(figsize=(8, 6))
 
-    levels = np.linspace(-50, 2, 53)
+    levels = jnp.linspace(-50, 2, 53)
     x = ax.contourf(X, Y, Z, levels=levels)
     cbar = plt.colorbar(x)
 
