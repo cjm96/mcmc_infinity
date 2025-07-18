@@ -136,9 +136,9 @@ class NormalizingFlowProposal:
         self._flow, losses = fit_to_data(key, self._flow, x, **kwargs)
         return losses
 
-    def set_flow_annealing(self, scale: float = 1.0) -> None:
+    def set_inflation_scale(self, scale: float = 1.0) -> None:
         """
-        Set the flow to an annealed version with the given scale.
+        Set the inflation scale for the flow.
         """
         self.inflation_scale = scale
 
