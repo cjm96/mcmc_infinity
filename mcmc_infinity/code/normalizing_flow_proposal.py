@@ -80,7 +80,7 @@ def get_annealed_flow(flow, scale: float = 1.0) -> flowjax.distributions.Transfo
 
 class NormalizingFlowProposal:
 
-    def __init__(self, dim: int, bounds=None, key=None, **kwargs):
+    def __init__(self, dim: int, bounds=None, key=None, rescale=True, **kwargs):
         if key is None:
             key = jrandom.key(0)
             print(
@@ -97,15 +97,21 @@ class NormalizingFlowProposal:
         self.dim = dim
         self.bounds = jnp.array(bounds) if bounds is not None else None
         self.flow_scale = 1.0  # Default scale for annealing
+        self.rescale = rescale
 
     def fit(self, x, key, **kwargs):
         x = jnp.asarray(x)
         if self.bounds is not None:
             # Rescale and apply logit
             assert x.shape[-1] == self.bounds.shape[0], "x and bounds must have the same dimensionality"
-            x = jnp.clip(x, self.bounds[:, 0], self.bounds[:, 1])
             x = (x - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
             x = jnp.log(x / (1 - x))
+
+        # Rescale to zero mean and unit variance
+        if self.rescale:
+            self.mean = jnp.mean(x, axis=0)
+            self.std = jnp.std(x, axis=0)
+            x = (x - self.mean) / self.std
         self._flow, losses = fit_to_data(key, self._flow, x, **kwargs)
         return losses
 
@@ -145,9 +151,13 @@ class NormalizingFlowProposal:
         shape = (int(num_samples),)
 
         x = self.annealed_flow.sample(key, shape)
+
+        if self.rescale:
+            # Rescale back to original scale
+            x = x * self.std + self.mean
+
         if self.bounds is not None:
             # Apply inverse logit and rescale
-            x = jnp.clip(x, -10, 10)
             x = jnp.exp(x) / (1 + jnp.exp(x))
             x = x * (self.bounds[:, 1] - self.bounds[:, 0])
             x = x + self.bounds[:, 0]
@@ -167,13 +177,17 @@ class NormalizingFlowProposal:
         """
         x = jnp.atleast_2d(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        log_prob = self.annealed_flow.log_prob(x)
+        log_j = jnp.zeros(x.shape[0])  # Initialize log Jacobian
         if self.bounds is not None:
             # Apply logit transformation
-            x = jnp.clip(x, self.bounds[:, 0], self.bounds[:, 1])
             x = (x - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
             x = jnp.log(x / (1 - x))
-            log_prob += jnp.sum(jnp.log(self.bounds[:, 1] - self.bounds[:, 0]))
+            log_j = jnp.sum(jnp.log(self.bounds[:, 1] - self.bounds[:, 0]))
+        if self.rescale:
+            # Rescale to zero mean and unit variance
+            x = (x - self.mean) / self.std
+            log_j += jnp.sum(jnp.log(self.std))
+        log_prob = self.annealed_flow.log_prob(x) + log_j
         return log_prob
     
     def __call__(self, x):
