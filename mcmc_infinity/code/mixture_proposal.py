@@ -60,7 +60,7 @@ class MixtureProposal:
         )
         keys = jax.random.split(key, self.n_proposals)
         samples = jnp.concatenate([
-            proposal.sample(k, n)
+            proposal.sample(k, n) if n > 0 else jnp.empty((0, self.dim))
             for proposal, n, k in zip(self.proposals, n_samples_per_proposal, keys)
         ], axis=0)
         return samples
@@ -108,15 +108,17 @@ class MixtureProposal:
 if __name__ == "__main__":
     # Example usage with uniform and symmetric Gaussian proposals
     from mcmc_infinity.code.uniform_proposal import UniformProposal
-    from mcmc_infinity.code.gaussian_proposal import GaussianProposal
+    from mcmc_infinity.code.gaussian_proposal import DiagonalGaussianProposal
     import matplotlib.pyplot as plt
 
     proposals = [
         UniformProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]])),
-        GaussianProposal(dim=2, mu=0, sigma=1)
+        DiagonalGaussianProposal(dim=2, mu=0, sigma=1)
     ]
 
     proposal = MixtureProposal(*proposals, weights=[0.5, 0.5])
+
+    proposal.sample(jax.random.key(0))
 
     n = 1000
     samples = proposal.sample(jax.random.key(0), num_samples=n)
