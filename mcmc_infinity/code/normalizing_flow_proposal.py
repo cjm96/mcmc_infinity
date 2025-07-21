@@ -1,5 +1,6 @@
 
 import jax
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import jax.random as jrandom
 from flowjax.train import fit_to_data
