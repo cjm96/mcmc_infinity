@@ -76,10 +76,7 @@ class KernelDensityEstimateProposal:
             x = x * (self.bounds[:, 1] - self.bounds[:, 0])
             x = x + self.bounds[:, 0]
 
-        if num_samples is None:
-            return x[0]
-        else:
-            return x
+        return x
 
     def logP(self, x):
         """
@@ -100,8 +97,11 @@ class KernelDensityEstimateProposal:
             x = (x - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
             x = jnp.log(x / (1 - x))
 
-        return self.kde.logpdf(x.T)
-    
+        if x.ndim == 1:
+            return self.kde.logpdf(x.T)[0]
+        else:
+            return self.kde.logpdf(x.T)
+
     def __call__(self, x):
         """
         Call the logP method for convenience.
