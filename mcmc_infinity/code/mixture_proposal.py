@@ -81,9 +81,8 @@ class MixtureProposal:
         """
         x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-
         # Compute the log density for each proposal
-        log_probs = jnp.array([proposal.logP(x) for proposal in self.proposals])
+        log_probs = jnp.array([jnp.atleast_1d(proposal.logP(x)) for proposal in self.proposals])
         # Weight the log densities by the mixture weights
         log_prob = logsumexp(log_probs.T, b=self.weights, axis=1)
         return log_prob
