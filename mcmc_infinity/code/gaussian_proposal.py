@@ -99,18 +99,18 @@ class GaussianProposal:
             Samples from the Gaussian proposal
         """
         if num_samples is None:
-            num_samples = 1
-
+            shape = ()
+        else:
+            shape = (int(num_samples),)
         x = jax.random.multivariate_normal(
-            key, self.mu, self.cov, shape=(num_samples,)
+            key, self.mu, self.cov, shape=shape
         )
 
         # Use logit
         if self.bounds is not None:
             x = jnp.exp(x) / (1 + jnp.exp(x))
-            x = x * (self.bounds[:, 1] - self.bounds[:, 0])
-            x = x + self.bounds[:, 0]
-
+            x = x * (self.bounds[..., 1] - self.bounds[..., 0])
+            x = x + self.bounds[..., 0]
         return x
 
     def logP(self, x):
@@ -132,7 +132,7 @@ class GaussianProposal:
 
         if self.bounds is not None:
             # Apply logit transformation
-            x = (x - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
+            x = (x - self.bounds[..., 0]) / (self.bounds[..., 1] - self.bounds[..., 0])
             x = jnp.log(x / (1 - x))
 
         return multivariate_normal.logpdf(

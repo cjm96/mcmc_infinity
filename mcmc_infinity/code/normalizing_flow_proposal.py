@@ -173,8 +173,9 @@ class NormalizingFlowProposal:
             Shape=(num_samples, self.dim) or (self.dim,).
         """
         if num_samples is None:
-            num_samples = 1
-        shape = (int(num_samples),)
+            shape = ()
+        else:
+            shape = (int(num_samples),)
 
         x = self.annealed_flow.sample(key, shape)
 
@@ -201,9 +202,8 @@ class NormalizingFlowProposal:
         logl : array-like, shape=(...,)
             The log-density of the normalizing flow proposal function.
         """
-        x = jnp.atleast_2d(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        log_j = jnp.zeros(x.shape[0])  # Initialize log Jacobian
+        log_j = jnp.zeros(x.shape[0]) if x.ndim > 1 else 0.0
         if self.bounds is not None:
             # Apply logit transformation
             x = (x - self.bounds[:, 0]) / (
@@ -223,3 +223,27 @@ class NormalizingFlowProposal:
         Call the logP method for convenience.
         """
         return self.logP(x)
+
+
+if __name__ == "__main__":
+    dim = 2
+    bounds = jnp.array([[-5, 5], [-5, 5]])
+
+    key = jrandom.key(0)
+    proposal = NormalizingFlowProposal(dim, bounds=bounds, key=key)
+
+    # Generate some random data for fitting
+    data = jrandom.uniform(key, (1000, dim), minval=-5, maxval=5)
+    proposal.fit(data, key)
+
+    sample = proposal.sample(key)
+
+    assert sample.shape == (dim,), "Sample shape mismatch"
+
+    assert proposal.logP(sample).shape == (), "LogP shape mismatch"
+
+    # Sample from the proposal
+    samples = proposal.sample(key, num_samples=1000)
+
+    assert samples.shape == (1000, dim), "Sampled shape mismatch"
+    assert proposal.logP(samples).shape == (1000,), "LogP shape mismatch"
