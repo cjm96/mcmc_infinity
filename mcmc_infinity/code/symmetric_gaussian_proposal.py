@@ -5,6 +5,10 @@ import jax.numpy as jnp
 
 class SymmetricGaussianProposal:
     """
+    DO NOT USE THIS FOR PERFECT SAMPLING.
+    This is for demo and dev purposes only.
+    You have been warned!
+
     Generates samples from a multivariate Gaussian that is centred on the 
     current point.
     """
