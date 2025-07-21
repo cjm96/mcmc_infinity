@@ -149,7 +149,7 @@ class GaussianProposal:
         return self._cov * self.inflation_scale
 
     def fit(self, samples):
-        if self.bounds:
+        if self.bounds is not None:
             # Apply bounds to samples
             samples = (samples - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
             samples = jnp.log(samples / (1 - samples))
@@ -195,6 +195,22 @@ class GaussianProposal:
         return multivariate_normal.logpdf(
             x, mean=self.mu, cov=self.cov
         )
+
+    def __call__(self, x):
+        """
+        Call the logP method for convenience.
+
+        Parameters
+        ----------
+        x : array-like, shape=(..., self.dim)
+            An array of inputs to the log density function.
+
+        Returns
+        -------
+        logl : array-like, shape=(...,)
+            The log-density of the Gaussian proposal function.
+        """
+        return self.logP(x)
 
 if __name__ == "__main__":
     # Example usage
