@@ -11,16 +11,21 @@ class KernelDensityEstimateProposal:
 
     def __init__(self, 
                  dim, 
+                 bounds=None,
                  inflation_scale=1.0):
         """
         INPUTS
         ------
         dim : int
             The dimensionality of the input space.
+        bounds : array-like, optional
+            Optional bounds for the proposal distribution. 
+            If provided, the samples are transformed using a logit transformation.
         inflation_scale : float
             The scale factor for the covariance matrix.
         """
         self.dim = int(dim)
+        self.bounds = jnp.asarray(bounds) if bounds is not None else None
         self.inflation_scale = float(inflation_scale)
 
 
@@ -56,16 +61,22 @@ class KernelDensityEstimateProposal:
 
         RETURNS
         -------
-        samples : jnp.ndarray, shape=(num_samples, dim)
+        x : jnp.ndarray, shape=(num_samples, dim)
             Samples from the normalizing flow proposal distribution.
         """
         if num_samples is None:
-            samples = self.kde.resample(key)
+            x = self.kde.resample(key)
         else:
-            samples = self.kde.resample(key, shape=(int(num_samples),))
-            samples = samples.T
+            x = self.kde.resample(key, shape=(int(num_samples),))
+            x = x.T
 
-        return samples
+        # Use logit
+        if self.bounds is not None:
+            x = jnp.exp(x) / (1 + jnp.exp(x))
+            x = x * (self.bounds[:, 1] - self.bounds[:, 0])
+            x = x + self.bounds[:, 0]
+
+        return x
 
     def logP(self, x):
         """
@@ -80,6 +91,12 @@ class KernelDensityEstimateProposal:
             The log-density of the normalizing flow proposal function.
         """
         x = jnp.asarray(x)
+
+        if self.bounds is not None:
+            # Apply logit transformation
+            x = (x - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
+            x = jnp.log(x / (1 - x))
+
         return self.kde.logpdf(x.T)
     
     def __call__(self, x):
