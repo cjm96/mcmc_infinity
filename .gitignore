@@ -6,6 +6,7 @@
 mcmc_infinity/__pycache__/*
 mcmc_infinity/code/__pycache__/*
 mcmc_infinity/test_functions/__pycache__/*
+mcmc_infinity/tests/__pycache__/*
 
 .vscode/*
 
