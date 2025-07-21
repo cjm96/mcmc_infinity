@@ -1,5 +1,5 @@
 <p align="center">
-<img src="./mcmc_infinity/logo_images/logo.png" alt="logo" width="350"/>
+<img src="./logo_images/logo.png" alt="logo" width="350"/>
 </p>
 
 # MCMCinfinity
