@@ -76,18 +76,21 @@ class KernelDensityEstimateProposal:
             x = x * (self.bounds[:, 1] - self.bounds[:, 0])
             x = x + self.bounds[:, 0]
 
-        return x
+        if num_samples is None:
+            return x[0]
+        else:
+            return x
 
     def logP(self, x):
         """
         INPUTS:
         -------
-        x : array-like, shape=(..., self.dim)
+        x : array-like, shape=(num_points, self.dim) or (self.dim,)
             An array of inputs to the log density function.
 
         RETURNS
         -------
-        logl : array-like, shape=(...,)
+        logl : array-like, shape=(num_points,) or ()
             The log-density of the normalizing flow proposal function.
         """
         x = jnp.asarray(x)
