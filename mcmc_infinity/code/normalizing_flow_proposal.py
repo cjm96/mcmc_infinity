@@ -10,6 +10,8 @@ import flowjax.bijections
 import flowjax.distributions
 import flowjax.flows
 
+from .utils import logit, inv_logit
+
 
 def get_flow_function_class(name: str) -> Callable:
     try:
@@ -184,10 +186,8 @@ class NormalizingFlowProposal:
             x = x * self.std + self.mean
 
         if self.bounds is not None:
-            # Apply inverse logit and rescale
-            x = jnp.exp(x) / (1 + jnp.exp(x))
-            x = x * (self.bounds[:, 1] - self.bounds[:, 0])
-            x = x + self.bounds[:, 0]
+            # Apply inverse logit transformation
+            x = inv_logit(x, bounds=self.bounds)[0]
         return x
 
     def logP(self, x: jnp.ndarray) -> jnp.ndarray:
@@ -205,12 +205,7 @@ class NormalizingFlowProposal:
         assert x.shape[-1] == self.dim, "wrong dimensionality"
         log_j = jnp.zeros(x.shape[0]) if x.ndim > 1 else 0.0
         if self.bounds is not None:
-            # Apply logit transformation
-            x = (x - self.bounds[:, 0]) / (
-                self.bounds[:, 1] - self.bounds[:, 0]
-            )
-            x = jnp.log(x / (1 - x))
-            log_j = jnp.sum(jnp.log(self.bounds[:, 1] - self.bounds[:, 0]))
+            x, log_j = logit(x, bounds=self.bounds)
         if self.rescale:
             # Rescale to zero mean and unit variance
             x = (x - self.mean) / self.std

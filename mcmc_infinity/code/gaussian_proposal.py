@@ -3,6 +3,7 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 
+from .utils import logit, inv_logit
 
 class GaussianProposal:
     """
@@ -73,10 +74,7 @@ class GaussianProposal:
         assert self._cov is None, "covariance is already set"
 
         if self.bounds is not None:
-            # Apply bounds to samples, map to range (0,1)
-            samples = (samples - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
-            # Apply logit transformation
-            samples = jnp.log(samples / (1 - samples))
+            samples = logit(samples, bounds=self.bounds)[0]
 
         self.mu = jnp.mean(samples, axis=0)
         self._cov = jnp.cov(samples, rowvar=False)
@@ -106,11 +104,9 @@ class GaussianProposal:
             key, self.mu, self.cov, shape=shape
         )
 
-        # Use logit
         if self.bounds is not None:
-            x = jnp.exp(x) / (1 + jnp.exp(x))
-            x = x * (self.bounds[..., 1] - self.bounds[..., 0])
-            x = x + self.bounds[..., 0]
+            # Use logit, includes rescaling from [0, 1)
+            x = inv_logit(x, bounds=self.bounds)[0]
         return x
 
     def logP(self, x):
@@ -131,13 +127,14 @@ class GaussianProposal:
         assert x.shape[-1] == self.dim, "wrong dimensionality"
 
         if self.bounds is not None:
-            # Apply logit transformation
-            x = (x - self.bounds[..., 0]) / (self.bounds[..., 1] - self.bounds[..., 0])
-            x = jnp.log(x / (1 - x))
+            # Use logit, includes rescaling from [0, 1)
+            x, log_j = logit(x, bounds=self.bounds)
+        else:
+            log_j = jnp.zeros(x.shape[:-1])
 
         return multivariate_normal.logpdf(
             x, mean=self.mu, cov=self.cov
-        )
+        ) + log_j
 
     def __call__(self, x):
         """

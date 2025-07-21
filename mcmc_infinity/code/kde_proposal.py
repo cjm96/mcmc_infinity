@@ -3,6 +3,7 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax.scipy.stats import gaussian_kde
 
+from .utils import logit, inv_logit
 
 class KernelDensityEstimateProposal:
     """
@@ -72,9 +73,7 @@ class KernelDensityEstimateProposal:
 
         # Use logit
         if self.bounds is not None:
-            x = jnp.exp(x) / (1 + jnp.exp(x))
-            x = x * (self.bounds[:, 1] - self.bounds[:, 0])
-            x = x + self.bounds[:, 0]
+            x = inv_logit(x, bounds=self.bounds)[0]
 
         return x
 
@@ -93,14 +92,15 @@ class KernelDensityEstimateProposal:
         x = jnp.asarray(x)
 
         if self.bounds is not None:
-            # Apply logit transformation
-            x = (x - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
-            x = jnp.log(x / (1 - x))
+            # Use logit, includes rescaling from [0, 1)
+            x, log_j = logit(x, bounds=self.bounds)
+        else:
+            log_j = jnp.zeros(x.shape[:-1]) if x.ndim > 1 else 0.0
 
         if x.ndim == 1:
-            return self.kde.logpdf(x.T)[0]
+            return self.kde.logpdf(x.T)[0] + log_j
         else:
-            return self.kde.logpdf(x.T)
+            return self.kde.logpdf(x.T) + log_j
 
     def __call__(self, x):
         """
