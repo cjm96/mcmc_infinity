@@ -10,7 +10,7 @@ import flowjax.bijections
 import flowjax.distributions
 import flowjax.flows
 
-from .utils import logit, inv_logit
+from ..utils import logit, inv_logit
 
 
 def get_flow_function_class(name: str) -> Callable:

@@ -3,7 +3,7 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax.scipy.stats import gaussian_kde
 
-from .utils import logit, inv_logit
+from ..utils import logit, inv_logit
 
 class KernelDensityEstimateProposal:
     """

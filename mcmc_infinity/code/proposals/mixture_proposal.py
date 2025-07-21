@@ -8,7 +8,8 @@ class MixtureProposal:
     """
     A class for a mixture proposal distribution.
 
-    This class is used to create a proposal distribution that is a mixture of multiple distributions.
+    This class is used to create a proposal distribution 
+    that is a mixture of multiple distributions.
     """
 
     def __init__(self, *proposals, weights=None):
@@ -113,9 +114,9 @@ class MixtureProposal:
 
 if __name__ == "__main__":
     # Example usage with uniform and symmetric Gaussian proposals
-    from mcmc_infinity.code.uniform_proposal import UniformProposal
-    from mcmc_infinity.code.gaussian_proposal import DiagonalGaussianProposal, GaussianProposal
-    from mcmc_infinity.code.normalizing_flow_proposal import NormalizingFlowProposal
+    from mcmc_infinity.code.proposals.uniform_proposal import UniformProposal
+    from mcmc_infinity.code.proposals.gaussian_proposal import DiagonalGaussianProposal, GaussianProposal
+    from mcmc_infinity.code.proposals.normalizing_flow_proposal import NormalizingFlowProposal
     import matplotlib.pyplot as plt
 
     proposals = [
