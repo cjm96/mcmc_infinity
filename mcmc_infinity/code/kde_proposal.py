@@ -1,7 +1,9 @@
 import jax
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax.scipy.stats import gaussian_kde
 
+from .utils import logit, inv_logit
 
 class KernelDensityEstimateProposal:
     """
@@ -10,16 +12,21 @@ class KernelDensityEstimateProposal:
 
     def __init__(self, 
                  dim, 
+                 bounds=None,
                  inflation_scale=1.0):
         """
         INPUTS
         ------
         dim : int
             The dimensionality of the input space.
+        bounds : array-like, optional
+            Optional bounds for the proposal distribution. 
+            If provided, the samples are transformed using a logit transformation.
         inflation_scale : float
             The scale factor for the covariance matrix.
         """
         self.dim = int(dim)
+        self.bounds = jnp.asarray(bounds) if bounds is not None else None
         self.inflation_scale = float(inflation_scale)
 
 
@@ -55,32 +62,46 @@ class KernelDensityEstimateProposal:
 
         RETURNS
         -------
-        samples : jnp.ndarray, shape=(num_samples, dim)
+        x : jnp.ndarray, shape=(num_samples, dim)
             Samples from the normalizing flow proposal distribution.
         """
         if num_samples is None:
-            samples = self.kde.resample(key)
+            x = self.kde.resample(key)
         else:
-            samples = self.kde.resample(key, shape=(int(num_samples),))
-            samples = samples.T
+            x = self.kde.resample(key, shape=(int(num_samples),))
+            x = x.T
 
-        return samples
+        # Use logit
+        if self.bounds is not None:
+            x = inv_logit(x, bounds=self.bounds)[0]
+
+        return x
 
     def logP(self, x):
         """
         INPUTS:
         -------
-        x : array-like, shape=(..., self.dim)
+        x : array-like, shape=(num_points, self.dim) or (self.dim,)
             An array of inputs to the log density function.
 
         RETURNS
         -------
-        logl : array-like, shape=(...,)
+        logl : array-like, shape=(num_points,) or ()
             The log-density of the normalizing flow proposal function.
         """
         x = jnp.asarray(x)
-        return self.kde.logpdf(x.T)
-    
+
+        if self.bounds is not None:
+            # Use logit, includes rescaling from [0, 1)
+            x, log_j = logit(x, bounds=self.bounds)
+        else:
+            log_j = jnp.zeros(x.shape[:-1]) if x.ndim > 1 else 0.0
+
+        if x.ndim == 1:
+            return self.kde.logpdf(x.T)[0] + log_j
+        else:
+            return self.kde.logpdf(x.T) + log_j
+
     def __call__(self, x):
         """
         Call the logP method for convenience.

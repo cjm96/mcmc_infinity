@@ -44,7 +44,7 @@ class UniformProposal:
         -------
         samples : jnp.ndarray
             Samples from the uniform proposal distribution.
-            Dhape=(num_samples, self.dim) or (self.dim,). 
+            shape=(num_samples, self.dim) or (self.dim,) if num_samples is None. 
         """
         if num_samples is None:
             shape = (self.dim,)
@@ -56,20 +56,25 @@ class UniformProposal:
     
     def logP(self, x):
         """
+        Compute the log-density of the uniform proposal distribution.
+
         INPUTS:
         -------
-        x : array-like, shape=(..., self.dim)
+        x : array-like, shape=(num_points, self.dim) or (self.dim,)
             An array of inputs to the log density function.
 
         RETURNS
         -------
-        logl : array-like, shape=(...,)
+        logl : array-like, shape=(num_points,) or ()
             The log-density of the uniform proposal function.
         """
         x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
         logl = self.norm
-        return logl * jnp.ones(x.shape[:-1], dtype=x.dtype)
+        if x.ndim == 1:
+            return logl
+        else:
+            return logl * jnp.ones(x.shape[0], dtype=x.dtype)
 
     def __call__(self, x):
         return self.logP(x)
@@ -98,3 +103,4 @@ if __name__ == "__main__":
     ax.set_ylabel("x2")
     ax.set_aspect('equal')
     plt.show()
+

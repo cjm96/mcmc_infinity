@@ -1,4 +1,5 @@
 import jax
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax.scipy.special import logsumexp
 
@@ -52,18 +53,22 @@ class MixtureProposal:
             Shape=(num_samples, self.dim) or (self.dim,).
         """
         if num_samples is None:
-            num_samples = 1
-
+            n = 1
+        else:
+            n = int(num_samples)
         # Sample from the mixture distribution
         n_samples_per_proposal = jax.random.multinomial(
-            key, num_samples, self.weights, dtype=jnp.int32
+            key, n, self.weights, dtype=jnp.int32
         )
         keys = jax.random.split(key, self.n_proposals)
         samples = jnp.concatenate([
-            proposal.sample(k, n)
+            proposal.sample(k, n) if n > 0 else jnp.empty((0, self.dim))
             for proposal, n, k in zip(self.proposals, n_samples_per_proposal, keys)
         ], axis=0)
-        return samples
+        if num_samples is None:
+            return samples[0]
+        else:
+            return samples
 
     def logP(self, x):
         """
@@ -81,11 +86,12 @@ class MixtureProposal:
         """
         x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-
         # Compute the log density for each proposal
-        log_probs = jnp.array([proposal.logP(x) for proposal in self.proposals])
+        log_probs = jnp.array([jnp.atleast_1d(proposal.logP(x)) for proposal in self.proposals])
         # Weight the log densities by the mixture weights
         log_prob = logsumexp(log_probs.T, b=self.weights, axis=1)
+        if x.ndim == 1:
+            return log_prob[0]
         return log_prob
 
     def __call__(self, x):
@@ -108,20 +114,33 @@ class MixtureProposal:
 if __name__ == "__main__":
     # Example usage with uniform and symmetric Gaussian proposals
     from mcmc_infinity.code.uniform_proposal import UniformProposal
-    from mcmc_infinity.code.gaussian_proposal import GaussianProposal
+    from mcmc_infinity.code.gaussian_proposal import DiagonalGaussianProposal, GaussianProposal
+    from mcmc_infinity.code.normalizing_flow_proposal import NormalizingFlowProposal
     import matplotlib.pyplot as plt
 
     proposals = [
         UniformProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]])),
-        GaussianProposal(dim=2, mu=0, sigma=1)
+        DiagonalGaussianProposal(dim=2, mu=0, sigma=1),
+        GaussianProposal(dim=2),
+        NormalizingFlowProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]]))
     ]
 
-    proposal = MixtureProposal(*proposals, weights=[0.5, 0.5])
+    samples = jax.random.normal(jax.random.key(0), shape=(100, 2))
+
+    proposals[2].fit(samples)
+    proposals[3].fit(samples, key=jax.random.key(0))
+
+    proposal = MixtureProposal(*proposals)
+
+    x = proposal.sample(jax.random.key(0))
+    assert x.shape == (2,), "Sample shape mismatch: expected (2,), got {}".format(x.shape)
+    assert proposal.logP(x).shape == (), "LogP shape mismatch: expected (), got {}".format(proposal.logP(x).shape)
 
     n = 1000
     samples = proposal.sample(jax.random.key(0), num_samples=n)
     assert samples.shape == (n, proposal.dim), f"Sample dimension mismatch: {samples.shape} != {(n, proposal.dim)}"
     log_probs = proposal.logP(samples)
+    assert log_probs.shape == (n,), f"LogP shape mismatch: {log_probs.shape} != {(n,)}"
 
     fig = plt.figure()
     plt.scatter(samples[:, 0], samples[:, 1], c=log_probs, cmap='viridis', s=1)

@@ -1,5 +1,6 @@
 
 import jax
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import jax.random as jrandom
 from flowjax.train import fit_to_data
@@ -8,6 +9,8 @@ from typing import Any, Callable, Dict, Optional, Union
 import flowjax.bijections
 import flowjax.distributions
 import flowjax.flows
+
+from .utils import logit, inv_logit
 
 
 def get_flow_function_class(name: str) -> Callable:
@@ -172,8 +175,9 @@ class NormalizingFlowProposal:
             Shape=(num_samples, self.dim) or (self.dim,).
         """
         if num_samples is None:
-            num_samples = 1
-        shape = (int(num_samples),)
+            shape = ()
+        else:
+            shape = (int(num_samples),)
 
         x = self.annealed_flow.sample(key, shape)
 
@@ -182,11 +186,9 @@ class NormalizingFlowProposal:
             x = x * self.std + self.mean
 
         if self.bounds is not None:
-            # Apply inverse logit and rescale
-            x = jnp.exp(x) / (1 + jnp.exp(x))
-            x = x * (self.bounds[:, 1] - self.bounds[:, 0])
-            x = x + self.bounds[:, 0]
-        return jnp.squeeze(x)
+            # Apply inverse logit transformation
+            x = inv_logit(x, bounds=self.bounds)[0]
+        return x
 
     def logP(self, x: jnp.ndarray) -> jnp.ndarray:
         """
@@ -200,16 +202,10 @@ class NormalizingFlowProposal:
         logl : array-like, shape=(...,)
             The log-density of the normalizing flow proposal function.
         """
-        x = jnp.atleast_2d(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        log_j = jnp.zeros(x.shape[0])  # Initialize log Jacobian
+        log_j = jnp.zeros(x.shape[0]) if x.ndim > 1 else 0.0
         if self.bounds is not None:
-            # Apply logit transformation
-            x = (x - self.bounds[:, 0]) / (
-                self.bounds[:, 1] - self.bounds[:, 0]
-            )
-            x = jnp.log(x / (1 - x))
-            log_j = jnp.sum(jnp.log(self.bounds[:, 1] - self.bounds[:, 0]))
+            x, log_j = logit(x, bounds=self.bounds)
         if self.rescale:
             # Rescale to zero mean and unit variance
             x = (x - self.mean) / self.std
@@ -222,3 +218,27 @@ class NormalizingFlowProposal:
         Call the logP method for convenience.
         """
         return self.logP(x)
+
+
+if __name__ == "__main__":
+    dim = 2
+    bounds = jnp.array([[-5, 5], [-5, 5]])
+
+    key = jrandom.key(0)
+    proposal = NormalizingFlowProposal(dim, bounds=bounds, key=key)
+
+    # Generate some random data for fitting
+    data = jrandom.uniform(key, (1000, dim), minval=-5, maxval=5)
+    proposal.fit(data, key)
+
+    sample = proposal.sample(key)
+
+    assert sample.shape == (dim,), "Sample shape mismatch"
+
+    assert proposal.logP(sample).shape == (), "LogP shape mismatch"
+
+    # Sample from the proposal
+    samples = proposal.sample(key, num_samples=1000)
+
+    assert samples.shape == (1000, dim), "Sampled shape mismatch"
+    assert proposal.logP(samples).shape == (1000,), "LogP shape mismatch"
