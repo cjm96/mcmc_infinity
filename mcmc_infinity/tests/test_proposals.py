@@ -86,3 +86,35 @@ def test_proposal_shapes(dim, key, proposal):
     sample = proposal.sample(key, num_samples=10)
     assert sample.shape == (10, dim), \
         f"Unexpected sample shape: expected (10, {dim}) got {sample.shape}"
+
+
+def test_mixture_proposal(dim, bounds, key):
+    mixture_proposal = mc.mixture_proposal.MixtureProposal(
+        *[p[0](dim=dim, bounds=bounds, **p[1]) for p in PROPOSALS],
+    )
+    samples = jax.random.uniform(key, shape=(100, dim))
+
+    for proposal in mixture_proposal.proposals:
+        if hasattr(proposal, 'fit'):
+            try:
+                proposal.fit(samples)
+            except TypeError:
+                proposal.fit(samples, key=key)
+
+    # Test sample and logP methods
+    sample = mixture_proposal.sample(key, num_samples=10)
+    assert sample.shape == (10, dim), \
+        f"Unexpected sample shape: expected (10, {dim}) got {sample.shape}" 
+
+    logP = mixture_proposal.logP(sample)
+    assert logP.shape == (10,), \
+        f"Unexpected logP shape: expected (10,) got {logP.shape}"   
+
+    sample = mixture_proposal.sample(key)
+    assert sample.shape == (dim,), \
+        f"Unexpected sample shape: expected ({dim},) got {sample.shape}"
+
+    logP = mixture_proposal.logP(sample)
+    assert logP.shape == (), \
+        f"Unexpected logP shape: expected () got {logP.shape}"  
+
