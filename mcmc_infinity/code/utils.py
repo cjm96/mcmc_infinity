@@ -9,7 +9,6 @@ def logit(x, bounds=None):
     if bounds is not None:
         x = (x - bounds[..., 0]) / (bounds[..., 1] - bounds[..., 0])
         log_j = log_j - jnp.log(bounds[..., 1] - bounds[..., 0]).sum()
-        print(x.shape, log_j.shape)
     log_j = log_j + (-jnp.log(x) - jnp.log1p(-x)).sum(axis=-1)
     x = jnp.log(x / (1 - x))
     return x, log_j
