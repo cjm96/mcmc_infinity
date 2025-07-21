@@ -95,7 +95,7 @@ class PerfectSampler:
         elif isinstance(self.proposal, Qkde):
             Qargs = ()
         elif isinstance(self.proposal, Qgauss):
-            Qargs()
+            Qargs = ()
         elif isinstance(self.proposal, Qmixture):
             Qargs = ()
         else:
