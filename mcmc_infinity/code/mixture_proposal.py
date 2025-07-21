@@ -108,17 +108,26 @@ class MixtureProposal:
 if __name__ == "__main__":
     # Example usage with uniform and symmetric Gaussian proposals
     from mcmc_infinity.code.uniform_proposal import UniformProposal
-    from mcmc_infinity.code.gaussian_proposal import DiagonalGaussianProposal
+    from mcmc_infinity.code.gaussian_proposal import DiagonalGaussianProposal, GaussianProposal
+    from mcmc_infinity.code.normalizing_flow_proposal import NormalizingFlowProposal
     import matplotlib.pyplot as plt
 
     proposals = [
         UniformProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]])),
-        DiagonalGaussianProposal(dim=2, mu=0, sigma=1)
+        DiagonalGaussianProposal(dim=2, mu=0, sigma=1),
+        GaussianProposal(dim=2),
+        NormalizingFlowProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]]))
     ]
 
-    proposal = MixtureProposal(*proposals, weights=[0.5, 0.5])
+    samples = jax.random.normal(jax.random.key(0), shape=(100, 2))
 
-    proposal.sample(jax.random.key(0))
+    proposals[2].fit(samples)
+    proposals[3].fit(samples, key=jax.random.key(0))
+
+    proposal = MixtureProposal(*proposals)
+
+    x = proposal.sample(jax.random.key(0))
+    proposal.logP(x)
 
     n = 1000
     samples = proposal.sample(jax.random.key(0), num_samples=n)

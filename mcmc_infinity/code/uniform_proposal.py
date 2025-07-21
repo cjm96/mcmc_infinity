@@ -69,7 +69,8 @@ class UniformProposal:
         x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
         logl = self.norm
-        return logl * jnp.ones(x.shape[:-1], dtype=x.dtype)
+        n = x.shape[0] if x.ndim > 1 else 1
+        return logl * jnp.ones(n, dtype=x.dtype)
 
     def __call__(self, x):
         return self.logP(x)

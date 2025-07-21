@@ -186,7 +186,7 @@ class NormalizingFlowProposal:
             x = jnp.exp(x) / (1 + jnp.exp(x))
             x = x * (self.bounds[:, 1] - self.bounds[:, 0])
             x = x + self.bounds[:, 0]
-        return jnp.squeeze(x)
+        return x
 
     def logP(self, x: jnp.ndarray) -> jnp.ndarray:
         """

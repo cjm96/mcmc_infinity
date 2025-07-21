@@ -8,6 +8,8 @@ from .uniform_proposal import UniformProposal as Quniform
 from .symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
 from .normalizing_flow_proposal import NormalizingFlowProposal as Qflow
 from .kde_proposal import KernelDensityEstimateProposal as Qkde
+from .gaussian_proposal import GaussianProposal as Qgauss
+from .mixture_proposal import MixtureProposal as Qmixture
 
 
 class PerfectSampler:
@@ -92,12 +94,16 @@ class PerfectSampler:
             Qargs = ()
         elif isinstance(self.proposal, Qkde):
             Qargs = ()
+        elif isinstance(self.proposal, Qgauss):
+            Qargs()
+        elif isinstance(self.proposal, Qmixture):
+            Qargs = ()
         else:
             raise ValueError(f"Unrecognised proposal type {self.proposal_type}")
 
         key = jax.random.key(xi)
         key, subkey = jax.random.split(key)
-        y = self.proposal.sample(subkey, *Qargs)
+        y = jnp.squeeze(self.proposal.sample(subkey, *Qargs))
 
         key, subkey = jax.random.split(key)
         u = jax.random.uniform(subkey)
@@ -178,7 +184,7 @@ class PerfectSampler:
         for i in range(T):
             for c, chain in enumerate(chains):
                 pos, a = self.phi(chains[c, i, :], seeds[i])
-                chains = chains.at[c, i+1, :].set(pos)
+                chains = chains.at[c, i+1, ...].set(pos)
 
         return chains
 
