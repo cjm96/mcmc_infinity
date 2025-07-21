@@ -4,12 +4,12 @@ import jax.numpy as jnp
 import time
 import tqdm
 
-from .uniform_proposal import UniformProposal as Quniform
-from .symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
-from .normalizing_flow_proposal import NormalizingFlowProposal as Qflow
-from .kde_proposal import KernelDensityEstimateProposal as Qkde
-from .gaussian_proposal import GaussianProposal as Qgauss
-from .mixture_proposal import MixtureProposal as Qmixture
+from .proposals.uniform_proposal import UniformProposal as Quniform
+from .proposals.symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
+from .proposals.normalizing_flow_proposal import NormalizingFlowProposal as Qflow
+from .proposals.kde_proposal import KernelDensityEstimateProposal as Qkde
+from .proposals.gaussian_proposal import GaussianProposal as Qgauss
+from .proposals.mixture_proposal import MixtureProposal as Qmixture
 
 
 class PerfectSampler:
