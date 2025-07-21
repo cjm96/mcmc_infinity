@@ -53,11 +53,12 @@ class MixtureProposal:
             Shape=(num_samples, self.dim) or (self.dim,).
         """
         if num_samples is None:
-            num_samples = 1
-
+            shape = ()
+        else:
+            shape = (int(num_samples),)
         # Sample from the mixture distribution
         n_samples_per_proposal = jax.random.multinomial(
-            key, num_samples, self.weights, dtype=jnp.int32
+            key, shape, self.weights, dtype=jnp.int32
         )
         keys = jax.random.split(key, self.n_proposals)
         samples = jnp.concatenate([
@@ -127,12 +128,14 @@ if __name__ == "__main__":
     proposal = MixtureProposal(*proposals)
 
     x = proposal.sample(jax.random.key(0))
-    proposal.logP(x)
+    assert x.shape == (2,), "Sample shape mismatch: expected (2,), got {}".format(x.shape)
+    assert proposal.logP(x).shape == (), "LogP shape mismatch: expected (), got {}".format(proposal.logP(x).shape)
 
     n = 1000
     samples = proposal.sample(jax.random.key(0), num_samples=n)
     assert samples.shape == (n, proposal.dim), f"Sample dimension mismatch: {samples.shape} != {(n, proposal.dim)}"
     log_probs = proposal.logP(samples)
+    assert log_probs.shape == (n,), f"LogP shape mismatch: {log_probs.shape} != {(n,)}"
 
     fig = plt.figure()
     plt.scatter(samples[:, 0], samples[:, 1], c=log_probs, cmap='viridis', s=1)
