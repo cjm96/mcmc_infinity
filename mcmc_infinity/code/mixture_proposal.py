@@ -53,19 +53,22 @@ class MixtureProposal:
             Shape=(num_samples, self.dim) or (self.dim,).
         """
         if num_samples is None:
-            shape = ()
+            n = 1
         else:
-            shape = (int(num_samples),)
+            n = int(num_samples)
         # Sample from the mixture distribution
         n_samples_per_proposal = jax.random.multinomial(
-            key, shape, self.weights, dtype=jnp.int32
+            key, n, self.weights, dtype=jnp.int32
         )
         keys = jax.random.split(key, self.n_proposals)
         samples = jnp.concatenate([
             proposal.sample(k, n) if n > 0 else jnp.empty((0, self.dim))
             for proposal, n, k in zip(self.proposals, n_samples_per_proposal, keys)
         ], axis=0)
-        return samples
+        if num_samples is None:
+            return samples[0]
+        else:
+            return samples
 
     def logP(self, x):
         """
@@ -87,6 +90,8 @@ class MixtureProposal:
         log_probs = jnp.array([jnp.atleast_1d(proposal.logP(x)) for proposal in self.proposals])
         # Weight the log densities by the mixture weights
         log_prob = logsumexp(log_probs.T, b=self.weights, axis=1)
+        if x.ndim == 1:
+            return log_prob[0]
         return log_prob
 
     def __call__(self, x):
