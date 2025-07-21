@@ -3,129 +3,42 @@ import jax.numpy as jnp
 from jax.scipy.stats import multivariate_normal
 
 
-class DiagonalGaussianProposal:
+class GaussianProposal:
     """
     A Gaussian proposal distribution.
 
-    Parameters
-    ----------
-    dim : int
-        The dimensionality of the proposal distribution.
-    mu : float
-        The mean of the Gaussian proposal.
-    sigma : float
-        The standard deviation of the Gaussian proposal.
-    bounds : tuple, optional
-        Optional bounds for the proposal distribution (not used in this implementation).
+    The user can either provide a mean and covariance matrix, or these can
+    be estimated from some samples that the user provides.
     """
 
-    def __init__(self, dim, mu, sigma):
+    def __init__(self, dim, bounds=None, inflation_scale=1.0,
+                 mean=None, cov=None):
         """
-        Initialize the Gaussian proposal distribution.
-
-        Parameters
-        ----------
+        INPUTS
+        ------
         dim : int
             The dimensionality of the proposal distribution.
-        mu : float
-            The mean of the Gaussian proposal.
-        sigma : float
-            The standard deviation of the Gaussian proposal.
+        bounds : array-like, optional
+            Optional bounds for the proposal distribution. 
+            If provided, the samples are transformed using a logit transformation.
+        inflation_scale : float, optional
+            A scale factor to inflate the covariance matrix. Default is 1.0.
+        mean : array-like, shape=(dim,), optional
+            The mean of the Gaussian proposal distribution. 
+            If None, it will be estimated from samples.
+        cov : array-like, shape=(dim, dim), optional
+            The covariance matrix of the Gaussian proposal distribution. 
+            If None, it will be estimated from samples.
         """
-        self.dim = int(dim)
-        self.mu = jnp.asarray(mu)
-        self.sigma = float(sigma)
-
-    def sample(self, key, num_samples=None):
-        """
-        Generate samples from the Gaussian proposal distribution.
-
-        Parameters
-        ----------
-        key : jax.random.PRNGKey
-            The random key for reproducibility.
-        num_samples : int, optional
-            The number of samples to generate. Default is None, which generates a single sample.
-
-        Returns
-        -------
-        samples : jnp.ndarray
-            Samples from the Gaussian proposal distribution.
-            Shape=(num_samples, self.dim) or (self.dim,).
-        """
-        if num_samples is None:
-            shape = (self.dim,)
-        else:
-            shape = (int(num_samples), self.dim)
-
-        y = self.mu + self.sigma * jax.random.normal(key, shape=shape)
-
-        return y
-
-    def logP(self, x):
-        """
-        Compute the log-density of the Gaussian proposal distribution.
-
-        Parameters
-        ----------
-        x : array-like, shape=(..., self.dim)
-            An array of inputs to the log density function.
-
-        Returns
-        -------
-        logl : array-like, shape=(...,)
-            The log-density of the Gaussian proposal function.
-        """
-        x = jnp.asarray(x)
-        assert x.shape[-1] == self.dim, "wrong dimensionality"
-
-        diff = x - self.mu
-        logl = -0.5 * jnp.sum(diff**2, axis=-1) / (self.sigma**2)
-        logl -= 0.5 * self.dim * jnp.log(2 * jnp.pi * self.sigma**2)
-
-        return logl
-
-    def __call__(self, x):
-        """
-        Call the logP method for convenience.
-
-        Parameters
-        ----------
-        x : array-like, shape=(..., self.dim)
-            An array of inputs to the log density function.
-
-        Returns
-        -------
-        logl : array-like, shape=(...,)
-            The log-density of the Gaussian proposal function.
-        """
-        return self.logP(x)
-    
-
-class GaussianProposal:
-    """
-    A Gaussian proposal distribution that estimates its mean and covariance from samples.
-
-    PARAMETERS
-    ----------
-    dim : int
-        The dimensionality of the proposal distribution.
-    bounds : array-like, optional
-        Optional bounds for the proposal distribution. If provided, the samples will be transformed using a logit transformation.
-    inflation_scale : float, optional
-        A scale factor to inflate the covariance matrix. Default is 1.0.
-    """
-
-    def __init__(self, dim, bounds=None, inflation_scale=1.0):
         self.dim = int(dim)
         self.bounds = jnp.asarray(bounds) if bounds is not None else None
-        self.mu = None
-        self._cov = None
-        self.inflation_scale = inflation_scale
+        self.mu = jnp.array(mean) if mean is not None else None
+        self._cov = jnp.array(cov) if cov is not None else None
+        self.inflation_scale = float(inflation_scale)
 
     def set_inflation_scale(self, scale):
         """
-        Set the inflation scale for the proposal distribution.
+        Change the inflation scale for the proposal distribution.
 
         PARAMETERS
         ----------
@@ -147,30 +60,42 @@ class GaussianProposal:
         return self._cov * self.inflation_scale
 
     def fit(self, samples):
-        """Fit the mean and covariance of the proposal distribution from samples.
+        """
+        Fit the mean and covariance of the proposal distribution from samples.
 
         PARAMETERS
         ----------
         samples : jnp.ndarray, shape=(num_samples, dim)
             The samples to fit the proposal distribution.
         """
+        assert self.mu is None, "mean is already set"
+        assert self._cov is None, "covariance is already set"
+
         if self.bounds is not None:
-            # Apply bounds to samples
+            # Apply bounds to samples, map to range (0,1)
             samples = (samples - self.bounds[:, 0]) / (self.bounds[:, 1] - self.bounds[:, 0])
+            # Apply logit transformation
             samples = jnp.log(samples / (1 - samples))
 
         self.mu = jnp.mean(samples, axis=0)
         self._cov = jnp.cov(samples, rowvar=False)
 
     def sample(self, key, num_samples=None):
-        """Sample from the Gaussian proposal distribution.
+        """
+        Sample from the Gaussian proposal distribution.
 
         PARAMETERS
         ----------
         key : jax.random.PRNGKey
             The random key for reproducibility.
         num_samples : int, optional
-            The number of samples to generate. Default is None, which generates a single sample.
+            The number of samples to generate. 
+            Default is None, which generates a single sample.
+
+        RETURNS
+        -------
+        samples : jnp.ndarray, shape=(num_samples, self.dim) or (self.dim,)
+            Samples from the Gaussian proposal
         """
         if num_samples is None:
             num_samples = 1
