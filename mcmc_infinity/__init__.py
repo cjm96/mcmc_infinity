@@ -11,3 +11,4 @@ from .test_functions import rastrigin
 from .test_functions import gaussian
 from .test_functions import rosenbrock
 from .test_functions import gaussian_shells
+from .test_functions import multiple_pulses
