@@ -66,7 +66,7 @@ class UniformProposalTransD:
         for i in range(num_samples):
             for ki in range(self.k[i]):
                 key, subkey = jax.random.split(key)
-                samples_ki = jax.random.uniform(key, shape=(self.dim, ))
+                samples_ki = jax.random.uniform(subkey, shape=(self.dim, ))
                 samples_ki = samples_ki*(self.bounds[:,1]-self.bounds[:,0])+self.bounds[:,0]
                 samples = samples.at[i, ki, :].set(samples_ki)
         return samples
