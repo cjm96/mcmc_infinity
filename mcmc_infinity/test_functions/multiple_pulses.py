@@ -84,19 +84,38 @@ class llh_pulses:
         return self.logP(x)
 
 
-def gen_data(make_plot=True):
+def gen_data(num=100, make_plot=True):
+    """
+    A function that generates Gaussian pulses in white noise.
+
+    INPUTS:
+    -------
+    num : int, 
+        Number of data points in the time series.
+    make_plot : bool, optional, 
+        Flag to plot the data.
+
+    RETURNS t, y, sigma, p_inj
+    -------
+    t : array-like, shape=(...,)
+        The time vector of the data.
+    y : array-like, shape=(...,)
+        The y vector of the data.
+    sigma : float, 
+        The variance of the white noise.
+    p_inj : array-like, shape=(...,)
+        The injection values of the Gaussian pulses.
+    """
+
     import matplotlib.pyplot as plt
 
     # define time stream
-    num = 500
     t = jnp.linspace(-1, 1, num)
 
     # define some injection parameters
     p_inj = [
-        [3.3, -0.2, 0.1],
         [2.6, -0.1, 0.1],
-        [3.4, 0.0, 0.1],
-        [2.9, 0.3, 0.1],
+        [3.4, 0.3, 0.15],
     ]
 
     # combine gaussian pulses
