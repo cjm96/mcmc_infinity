@@ -27,3 +27,6 @@ classifiers = [
 dev = [
     "pytest",
 ]
+
+[tool.setuptools]
+packages = ["mcmc_infinity"]
