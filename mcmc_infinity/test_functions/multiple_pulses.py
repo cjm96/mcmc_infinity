@@ -41,7 +41,7 @@ class llh_pulses:
     after summing the resulting Gaussian pulses.
     """
 
-    def __init__(self, t, data, sigma=2.0):
+    def __init__(self, t, data, sigma=2.0, dim=0):
         """
         INPUTS:
         -------
@@ -53,7 +53,9 @@ class llh_pulses:
         self.data = data
         self.t = t
         self.sigma = sigma
+        self.dim = dim
         assert self.sigma > 0, "sigma must be positive"
+        assert self.dim > 0, "Please provide the dim of the uni-component model (int)"
 
     def logP(self, x):
         """

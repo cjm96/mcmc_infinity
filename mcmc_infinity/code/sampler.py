@@ -5,6 +5,7 @@ import time
 import tqdm
 
 from .uniform_proposal import UniformProposal as Quniform
+from .uniform_proposal_transd import UniformProposalTransD as Quniformtd
 from .symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
 from .normalizing_flow_proposal import NormalizingFlowProposal as Qflow
 from .kde_proposal import KernelDensityEstimateProposal as Qkde
@@ -97,6 +98,8 @@ class PerfectSampler:
         elif isinstance(self.proposal, Qgauss):
             Qargs = ()
         elif isinstance(self.proposal, Qmixture):
+            Qargs = ()
+        elif isinstance(self.proposal, Quniformtd):
             Qargs = ()
         else:
             raise ValueError(f"Unrecognised proposal type {self.proposal_type}")

@@ -1,6 +1,7 @@
 from .code import sampler
 
 from .code import uniform_proposal
+from .code import uniform_proposal_transd
 from .code import symmetric_gaussian_proposal
 from .code import normalizing_flow_proposal
 from .code import kde_proposal
