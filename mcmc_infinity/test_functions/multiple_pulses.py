@@ -73,6 +73,9 @@ class llh_pulses:
             The log-posterior of the target function.
         """
         x = jnp.asarray(x)
+        x = x.reshape(-1, self.dim) # reshape, put all components in rows (even empty slots)
+        mask = ~jnp.any(jnp.isnan(x), axis=1) # handle empty entries of components (nans)
+        x = x[mask]
         template = combine_gaussians(self.t, x)
         logl = -0.5 * jnp.sum(((template - self.data) / self.sigma) ** 2, axis=-1)
         return logl
@@ -81,7 +84,7 @@ class llh_pulses:
         return self.logP(x)
 
 
-def gen_data():
+def gen_data(make_plot=True):
     import matplotlib.pyplot as plt
 
     # define time stream
@@ -106,14 +109,15 @@ def gen_data():
     y = injection + sigma * np.random.randn(len(injection))
     y = jnp.array(y)
 
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.plot(t, y, label="data", color="lightskyblue")
-    plt.plot(t, injection, label="injection", color="crimson")
-    ax.legend(loc="upper right")
-    ax.set_xlabel("t")
-    ax.set_ylabel("A")
-    ax.set_title("1D Gaussian pulses in white noise")
-    plt.show()
+    if make_plot:
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(t, y, label="data", color="lightskyblue")
+        plt.plot(t, injection, label="injection", color="crimson")
+        ax.legend(loc="upper right")
+        ax.set_xlabel("t")
+        ax.set_ylabel("A")
+        ax.set_title("1D Gaussian pulses in white noise")
+        plt.show()
 
     return t, y, sigma, p_inj
 
