@@ -126,10 +126,7 @@ class NormalizingFlowProposal:
             assert x.shape[-1] == self.bounds.shape[0], (
                 "x and bounds must have the same dimensionality"
             )
-            x = (x - self.bounds[:, 0]) / (
-                self.bounds[:, 1] - self.bounds[:, 0]
-            )
-            x = jnp.log(x / (1 - x))
+            x = logit(x, bounds=self.bounds)[0]
 
         # Rescale to zero mean and unit variance
         if self.rescale:
