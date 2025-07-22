@@ -26,7 +26,7 @@ class PerfectSampler:
     """
 
     def __init__(self, target, proposal, initial_positions, 
-                 seed=None, proposal_kwargs={}):
+                 seed=None, proposal_kwargs={}, rj=False, kmax=None):
         """
         INPUTS:
         -------
@@ -48,6 +48,12 @@ class PerfectSampler:
         proposal_kwargs : dict, optional
             Additional arguments for the proposal distribution, if needed.
             E.g., for the SymmetricGaussianProposal {'sigma': 0.1}.
+        rj : bool, optional
+            Flag to denote reversible-jump sampling for trans-dimenstional problems. 
+            Default is False.
+        kmax : int, optional
+            The number of maxmum allowed nested models. Used only for the case of 
+            transdimensional problems. Needed if rj=True.
         """
         self.target = target
 
@@ -65,6 +71,11 @@ class PerfectSampler:
         self.key = jax.random.key(int(time.time()) if seed is None else seed)
 
         self.proposal_kwargs = dict(proposal_kwargs)
+
+        self.rj = rj
+        self.kmax = kmax if rj else 1
+        assert self.rj and self.kmax is not None and self.kmax > 0, \
+            f"If 'rj' is equal to True then the maximum number of component is needed (got {self.kmax})."
 
     def phi(self, x, xi):
         """
@@ -181,8 +192,8 @@ class PerfectSampler:
         """
         T = len(seeds)
 
-        chains = jnp.zeros((self.num_chains, T+1, self.dim))
-        chains = chains.at[:,0,:].set(self.initial_positions)
+        chains = jnp.full((self.num_chains,  T+1, self.kmax, self.dim,), jnp.nan)
+        chains = chains.at[:,0, :self.initial_positions.shape[0], :].set(self.initial_positions)
 
         for i in range(T):
             for c, chain in enumerate(chains):

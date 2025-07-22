@@ -86,12 +86,12 @@ class UniformProposalTransD:
             The log-density of the uniform proposal function.
         """
         x = jnp.asarray(x)
+        if x.ndim > 1:
+            mask = ~jnp.any(jnp.isnan(x), axis=1) # handle empty entries of components (nans)
+            x = x[mask]
         assert x.shape[-1] == self.dim, "wrong dimensionality"
         logl = self.norm * self.k # Is this correct?
-        if x.ndim == 1:
-            return logl
-        else:
-            return logl * jnp.ones(x.shape[0], dtype=x.dtype) * self.k # Is this correct?
+        return logl
 
     def __call__(self, x):
         return self.logP(x)
