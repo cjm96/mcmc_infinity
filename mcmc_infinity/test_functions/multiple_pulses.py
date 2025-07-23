@@ -131,6 +131,8 @@ def gen_data(num=100, make_plot=True):
     if make_plot:
         fig, ax = plt.subplots(figsize=(8, 6))
         ax.plot(t, y, label="data", color="lightskyblue")
+        for individual_pulse_params in p_inj:
+            plt.plot(t, combine_gaussians(t, jnp.asarray([individual_pulse_params])), color="gray", alpha=.5, linestyle="--")
         plt.plot(t, injection, label="injection", color="crimson")
         ax.legend(loc="upper right")
         ax.set_xlabel("t")
