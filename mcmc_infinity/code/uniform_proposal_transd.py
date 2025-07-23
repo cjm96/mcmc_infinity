@@ -29,10 +29,10 @@ class UniformProposalTransD:
 
         assert self.bounds.shape == (self.dim, 2), \
             f"Bounds must have shape ({self.dim}, 2), got {self.bounds.shape}."
+
+        self.norm = -jnp.sum(jnp.log(jnp.ptp(self.bounds, axis=1))) -jnp.diff(self.kbounds)
         
-        self.norm = -jnp.sum(jnp.log(jnp.ptp(self.bounds, axis=1)))
-        
-    def sample(self, key, num_samples=None):
+    def sample(self, key, num_samples=1):
         """
         Generate samples from the uniform proposal distribution.
 
@@ -49,13 +49,7 @@ class UniformProposalTransD:
         samples : jnp.ndarray
             Samples from the uniform proposal distribution.
             shape=(num_samples, self.dim) or (self.dim,) if num_samples is None. 
-        """
-        if num_samples is None:
-            shape = (self.dim,)
-            num_samples = 1
-        else:
-            shape = (int(num_samples), self.dim)
-        
+        """        
         # Initialize with nans
         samples = jnp.full( (int(num_samples), self.kbounds[1], self.dim,), jnp.nan)
 
@@ -66,8 +60,8 @@ class UniformProposalTransD:
         for i in range(num_samples):
             for ki in range(self.k[i]):
                 key, subkey = jax.random.split(key)
-                samples_ki = jax.random.uniform(subkey, shape=(self.dim, ))
-                samples_ki = samples_ki*(self.bounds[:,1]-self.bounds[:,0])+self.bounds[:,0]
+                ui = jax.random.uniform(subkey, shape=(self.dim, ))
+                samples_ki = ui*(self.bounds[:,1]-self.bounds[:,0])+self.bounds[:,0]
                 samples = samples.at[i, ki, :].set(samples_ki)
         return samples
     
@@ -76,7 +70,7 @@ class UniformProposalTransD:
         Compute the log-density of the uniform proposal distribution.
 
         INPUTS:
-        -------
+        ------- NOT CORRECT NO LOOK
         x : array-like, shape=(num_points, self.dim) or (self.dim,)
             An array of inputs to the log density function.
 
@@ -89,8 +83,9 @@ class UniformProposalTransD:
         if x.ndim > 1:
             mask = ~jnp.any(jnp.isnan(x), axis=1) # handle empty entries of components (nans)
             x = x[mask]
+        k = (~jnp.isnan(x)).sum(1)[..., -1]
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = self.norm * self.k # Is this correct?
+        logl = k * self.norm # log (1 / (kmin-kmax) * V**(-n) )  -- I think the minus sign is already in norm
         return logl
 
     def __call__(self, x):

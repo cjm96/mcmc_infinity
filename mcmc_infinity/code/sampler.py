@@ -64,7 +64,7 @@ class PerfectSampler:
         self.dim = self.target.dim
 
         self.initial_positions = jnp.asarray(initial_positions)
-        self.num_chains, d = self.initial_positions.shape
+        self.num_chains, k_inj, d = self.initial_positions.shape
         assert d == self.dim, \
             f"Initial position must have dimension ({self.dim},), got {d}."
 
@@ -254,10 +254,11 @@ class PerfectSampler:
                 all_output.append(chains)
 
             if self.num_chains > 1:
-                coupled = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], 
-                                          axis=0))
+                # coupled = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], axis=0))
+                coupled = jnp.array_equal(chains[:,-1,:], chains[0,-1,:], equal_nan=True)
             else:
-                coupled = jnp.any(jnp.not_equal(chains[0,-1,:], chains[0,0,:]))
+                # coupled = jnp.any(jnp.not_equal(chains[0,-1,:], chains[0,0,:]))
+                coupled = not jnp.array_equal(chains[:,-1,:], chains[0,0,:], equal_nan=True)
 
             T *= 2
 
