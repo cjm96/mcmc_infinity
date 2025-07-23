@@ -3,6 +3,7 @@ jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 import time
 import tqdm
+import equinox as eqx
 
 from .proposals.uniform_proposal import UniformProposal as Quniform
 from .proposals.symmetric_gaussian_proposal import SymmetricGaussianProposal as Qsymgauss
@@ -51,6 +52,7 @@ class PerfectSampler:
         self.target = target
 
         self.proposal = proposal
+        self.proposal_fn = eqx.filter_jit(proposal.logP)
 
         assert self.target.dim == self.proposal.dim, \
             "Target and proposal must have the same dimensionality."
@@ -108,8 +110,8 @@ class PerfectSampler:
         key, subkey = jax.random.split(key)
         u = jax.random.uniform(subkey)
 
-        a = ( self.target(y) - self.proposal(y, *Qargs) ) - \
-                ( self.target(x) - self.proposal(x, *Qargs) )
+        a = ( self.target(y) - self.proposal_fn(y, *Qargs) ) - \
+                ( self.target(x) - self.proposal_fn(x, *Qargs) )
 
         if jnp.log(u) < a:
             return y, True

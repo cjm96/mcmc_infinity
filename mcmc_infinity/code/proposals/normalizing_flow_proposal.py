@@ -1,4 +1,4 @@
-
+import copy
 import jax
 jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
@@ -9,6 +9,8 @@ from typing import Any, Callable, Dict, Optional, Union
 import flowjax.bijections
 import flowjax.distributions
 import flowjax.flows
+import paramax
+import equinox as eqx
 
 from ..utils import logit, inv_logit
 
@@ -76,8 +78,8 @@ def get_annealed_flow(
         scale=scale,
     )
     return flowjax.distributions.Transformed(
-        base_dist=new_base_dist,
-        bijection=flow.bijection,
+        base_dist=paramax.non_trainable(new_base_dist),
+        bijection=paramax.non_trainable(flow.bijection),
     )
 
 
@@ -134,6 +136,9 @@ class NormalizingFlowProposal:
             self.std = jnp.std(x, axis=0)
             x = (x - self.mean) / self.std
         self._flow, losses = fit_to_data(key, self._flow, x, **kwargs)
+        self._annealed_flow = get_annealed_flow(
+            self._flow, scale=self.inflation_scale
+        )
         return losses
 
     def set_inflation_scale(self, scale: float = 1.0) -> None:
@@ -141,13 +146,16 @@ class NormalizingFlowProposal:
         Set the inflation scale for the flow.
         """
         self.inflation_scale = scale
+        self._annealed_flow = get_annealed_flow(
+            self._flow, scale=self.inflation_scale
+        )
 
     @property
     def annealed_flow(self) -> flowjax.distributions.Transformed:
         """
         Returns an annealed version of the flow with scale=1.0.
         """
-        return get_annealed_flow(self._flow, scale=self.inflation_scale)
+        return self._annealed_flow
 
     def sample(
         self,
@@ -176,7 +184,7 @@ class NormalizingFlowProposal:
         else:
             shape = (int(num_samples),)
 
-        x = self.annealed_flow.sample(key, shape)
+        x = self._annealed_flow.sample(key, shape)
 
         if self.rescale:
             # Rescale back to original scale
@@ -206,8 +214,8 @@ class NormalizingFlowProposal:
         if self.rescale:
             # Rescale to zero mean and unit variance
             x = (x - self.mean) / self.std
-            log_j += jnp.sum(jnp.log(self.std))
-        log_prob = self.annealed_flow.log_prob(x) + log_j
+            log_j = log_j + jnp.sum(jnp.log(self.std))
+        log_prob = self._annealed_flow.log_prob(x) + log_j
         return log_prob
 
     def __call__(self, x: jnp.ndarray) -> jnp.ndarray:

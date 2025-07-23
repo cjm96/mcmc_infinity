@@ -8,7 +8,7 @@ class MixtureProposal:
     """
     A class for a mixture proposal distribution.
 
-    This class is used to create a proposal distribution 
+    This class is used to create a proposal distribution
     that is a mixture of multiple distributions.
     """
 
@@ -36,6 +36,19 @@ class MixtureProposal:
                 "Weights must match the number of proposals."
             self.weights /= jnp.sum(self.weights)
 
+        # Pre-compile individual proposal sampling functions to avoid
+        # recompilation issues
+        self._compiled_samplers = [
+            jax.jit(lambda key, prop=prop: prop.sample(key))
+            for prop in self.proposals
+        ]
+        
+        # Create a compiled function for each proposal's logP
+        self._compiled_logPs = [
+            jax.jit(lambda x, prop=prop: prop.logP(x))
+            for prop in self.proposals
+        ]
+
     def sample(self, key, num_samples=None):
         """
         Generate samples from the mixture proposal distribution.
@@ -45,7 +58,8 @@ class MixtureProposal:
         key : jax.random.PRNGKey
             The random key for reproducibility.
         num_samples : int, optional
-            The number of samples to generate. Default is None, which generates a single sample.
+            The number of samples to generate.
+            Default is None, which generates a single sample.
 
         RETURNS
         -------
@@ -54,22 +68,39 @@ class MixtureProposal:
             Shape=(num_samples, self.dim) or (self.dim,).
         """
         if num_samples is None:
-            n = 1
+            # For single sample - choose a proposal and sample from it directly
+            key_choice, key_sample = jax.random.split(key)
+            choice = jax.random.choice(key_choice, self.n_proposals,
+                                       p=self.weights)
+            
+            # Sample from all proposals and select the chosen one
+            # This approach ensures static shape compilation
+            samples = jnp.stack([
+                self._compiled_samplers[i](key_sample)
+                for i in range(self.n_proposals)
+            ])
+            return samples[choice]
         else:
             n = int(num_samples)
-        # Sample from the mixture distribution
-        n_samples_per_proposal = jax.random.multinomial(
-            key, n, self.weights, dtype=jnp.int32
-        )
-        keys = jax.random.split(key, self.n_proposals)
-        samples = jnp.concatenate([
-            proposal.sample(k, n) if n > 0 else jnp.empty((0, self.dim))
-            for proposal, n, k in zip(self.proposals, n_samples_per_proposal, keys)
-        ], axis=0)
-        if num_samples is None:
-            return samples[0]
-        else:
-            return samples
+            # For multiple samples
+            key_choices, key_samples = jax.random.split(key)
+            
+            # Choose which proposal to use for each sample
+            choices = jax.random.choice(key_choices, self.n_proposals,
+                                        shape=(n,), p=self.weights)
+
+            # Generate samples using vmap
+            sample_keys = jax.random.split(key_samples, n)
+
+            def sample_single(choice, sample_key):
+                # Sample from all proposals and select the chosen one
+                samples = jnp.stack([
+                    self._compiled_samplers[i](sample_key)
+                    for i in range(self.n_proposals)
+                ])
+                return samples[choice]
+
+            return jax.vmap(sample_single)(choices, sample_keys)
 
     def logP(self, x):
         """
@@ -87,10 +118,17 @@ class MixtureProposal:
         """
         x = jnp.asarray(x)
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        # Compute the log density for each proposal
-        log_probs = jnp.array([jnp.atleast_1d(proposal.logP(x)) for proposal in self.proposals])
+        
+        # Compute the log density for each proposal efficiently
+        # using pre-compiled functions
+        log_probs = jnp.stack([
+            jnp.atleast_1d(self._compiled_logPs[i](x))
+            for i in range(self.n_proposals)
+        ])
+        
         # Weight the log densities by the mixture weights
         log_prob = logsumexp(log_probs.T, b=self.weights, axis=1)
+        
         if x.ndim == 1:
             return log_prob[0]
         return log_prob
@@ -114,39 +152,40 @@ class MixtureProposal:
 
 if __name__ == "__main__":
     # Example usage with uniform and symmetric Gaussian proposals
-    from mcmc_infinity.code.proposals.uniform_proposal import UniformProposal
-    from mcmc_infinity.code.proposals.gaussian_proposal import DiagonalGaussianProposal, GaussianProposal
-    from mcmc_infinity.code.proposals.normalizing_flow_proposal import NormalizingFlowProposal
-    import matplotlib.pyplot as plt
+    from mcmc_infinity.code.proposals.uniform_proposal import (
+        UniformProposal)
+    from mcmc_infinity.code.proposals.gaussian_proposal import (
+        GaussianProposal)
+    from mcmc_infinity.code.proposals.normalizing_flow_proposal import (
+        NormalizingFlowProposal)
 
     proposals = [
         UniformProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]])),
-        DiagonalGaussianProposal(dim=2, mu=0, sigma=1),
         GaussianProposal(dim=2),
         NormalizingFlowProposal(dim=2, bounds=jnp.array([[-5, 5], [-5, 5]]))
     ]
 
+    # Fit proposals that need fitting
     samples = jax.random.normal(jax.random.key(0), shape=(100, 2))
-
-    proposals[2].fit(samples)
-    proposals[3].fit(samples, key=jax.random.key(0))
+    proposals[1].fit(samples)
+    proposals[2].fit(samples, key=jax.random.key(0))
 
     proposal = MixtureProposal(*proposals)
 
     x = proposal.sample(jax.random.key(0))
-    assert x.shape == (2,), "Sample shape mismatch: expected (2,), got {}".format(x.shape)
-    assert proposal.logP(x).shape == (), "LogP shape mismatch: expected (), got {}".format(proposal.logP(x).shape)
+    assert x.shape == (2,), (
+        "Sample shape mismatch: expected (2,), got {}".format(x.shape))
+    assert proposal.logP(x).shape == (), (
+        "LogP shape mismatch: expected (), got {}".format(
+            proposal.logP(x).shape))
 
     n = 1000
     samples = proposal.sample(jax.random.key(0), num_samples=n)
-    assert samples.shape == (n, proposal.dim), f"Sample dimension mismatch: {samples.shape} != {(n, proposal.dim)}"
+    assert samples.shape == (n, proposal.dim), (
+        f"Sample dimension mismatch: "
+        f"{samples.shape} != {(n, proposal.dim)}")
     log_probs = proposal.logP(samples)
-    assert log_probs.shape == (n,), f"LogP shape mismatch: {log_probs.shape} != {(n,)}"
+    assert log_probs.shape == (n,), (
+        f"LogP shape mismatch: {log_probs.shape} != {(n,)}")
 
-    fig = plt.figure()
-    plt.scatter(samples[:, 0], samples[:, 1], c=log_probs, cmap='viridis', s=1)
-    plt.colorbar(label='Log Probability Density')
-    plt.title('Samples from Mixture Proposal Distribution')
-    plt.xlabel('x1')
-    plt.ylabel('x2')
-    plt.show()
+    print("All tests passed!")
