@@ -255,7 +255,7 @@ class PerfectSampler:
 
             if self.num_chains > 1:
                 # coupled = jnp.all(jnp.all(chains[:,-1,:]==chains[0,-1,:], axis=0))
-                coupled = jnp.array_equal(chains[:,-1,:], chains[0,-1,:], equal_nan=True)
+                coupled = jnp.all(jnp.array([jnp.array_equal(chain_num, chains[0,-1,:], equal_nan=True) for chain_num in chains[:,-1,:]]))
             else:
                 # coupled = jnp.any(jnp.not_equal(chains[0,-1,:], chains[0,0,:]))
                 coupled = not jnp.array_equal(chains[:,-1,:], chains[0,0,:], equal_nan=True)
