@@ -296,17 +296,17 @@ class PerfectSampler:
             Only returned if return_T is True. 
             The number of steps T used for each sample.
         """
-        samples = jnp.zeros((num_samples, self.dim))
+        samples = jnp.zeros((num_samples, self.kmax, self.dim))
         t_vals = jnp.zeros((num_samples,), dtype=jnp.int32)
 
         for i in tqdm.trange(num_samples):
+            s, t = self.get_perfect_sample(T, verbose=verbose, return_T=return_T)
+            if s.ndim > 1:
+                mask = ~jnp.any(jnp.isnan(s), axis=1) # handle empty entries of components (nans)
+                s = s[mask]
+            samples = samples.at[i, :s.shape[0]].set(s)
             if return_T:
-                s, t = self.get_perfect_sample(T, verbose=verbose, return_T=return_T)
-                samples = samples.at[i].set(s)
                 t_vals = t_vals.at[i].set(t)
-            else:
-                s, = self.get_perfect_sample(T, verbose=verbose, return_T=return_T)
-                samples = samples.at[i].set(s)
         
         if return_T:
             return samples, t_vals
