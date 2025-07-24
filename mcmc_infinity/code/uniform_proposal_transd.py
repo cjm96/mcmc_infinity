@@ -84,7 +84,7 @@ class UniformProposalTransD:
             x = x[mask]
         k = (~jnp.isnan(x)).sum(1)[..., -1]
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = k * self.norm -jnp.diff(self.kbounds) # log (1 / (kmin-kmax) * V**(-n) )  -- I think the minus sign is already in norm
+        logl = - k * self.norm -jnp.diff(self.kbounds) # log (1 / (kmin-kmax) * V**(-n) )  -- I think the minus sign is already in norm
         return logl
 
     def __call__(self, x):
