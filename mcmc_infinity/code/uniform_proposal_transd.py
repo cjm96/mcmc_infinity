@@ -1,6 +1,6 @@
+import jax.numpy as jnp
 import jax
 jax.config.update("jax_enable_x64", True)
-import jax.numpy as jnp
 
 
 class UniformProposalTransD:
@@ -19,7 +19,7 @@ class UniformProposalTransD:
             The boundaries of the regon of support,
             of the form [(x0_min, x0_min), (x1_min, x1_max), ...].
             Each tuple specifies the lower and upper bounds for each dimension.
-        kbounds : jnp.ndarray, shape=(dim, 1)
+        kbounds : jnp.ndarray, shape=(dim, )
             The boundaries for the number of components for the nested model.
         """
         self.dim = int(dim)
@@ -30,7 +30,7 @@ class UniformProposalTransD:
         assert self.bounds.shape == (self.dim, 2), \
             f"Bounds must have shape ({self.dim}, 2), got {self.bounds.shape}."
 
-        self.norm = -jnp.sum(jnp.log(jnp.ptp(self.bounds, axis=1))) -jnp.diff(self.kbounds)
+        self.norm = -jnp.sum(jnp.log(jnp.ptp(self.bounds, axis=1)))
         
     def sample(self, key, num_samples=1):
         """
@@ -53,8 +53,7 @@ class UniformProposalTransD:
         # Initialize with nans
         samples = jnp.full( (int(num_samples), self.kbounds[1], self.dim,), jnp.nan)
 
-        # Here we should do it "birth-death"-like in order to be consistent,
-        # but I believe it should work as well, just far more inefficiently 
+        # Draw the model order k from uniform
         self.k = jax.random.randint(key, int(num_samples), self.kbounds[0], self.kbounds[1],)
 
         for i in range(num_samples):
@@ -85,7 +84,7 @@ class UniformProposalTransD:
             x = x[mask]
         k = (~jnp.isnan(x)).sum(1)[..., -1]
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = k * self.norm # log (1 / (kmin-kmax) * V**(-n) )  -- I think the minus sign is already in norm
+        logl = k * self.norm -jnp.diff(self.kbounds) # log (1 / (kmin-kmax) * V**(-n) )  -- I think the minus sign is already in norm
         return logl
 
     def __call__(self, x):
