@@ -34,6 +34,15 @@ def combine_gaussians(t, params):
         template += gaussian_pulse(t, *param)  # *params -> a, b, c
     return template
 
+def llh_pulses_eryn(params, t, data, sigma):
+    """
+    A simpler function to allow for trans-dimensional sampling with Eryn.
+    It's basically a barebones function of the llh_pulses class.
+    """
+    template = combine_gaussians(t, params)
+    ll = -0.5 * np.sum(((template - data) / sigma) ** 2, axis=-1)
+    return ll
+
 class llh_pulses:
     """
     A class representing the likelihood for the Gaussian pulses problem.
