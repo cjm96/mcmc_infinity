@@ -79,12 +79,12 @@ class UniformProposalTransD:
             The log-density of the uniform proposal function.
         """
         x = jnp.asarray(x)
-        if x.ndim > 1:
-            mask = ~jnp.any(jnp.isnan(x), axis=1) # handle empty entries of components (nans)
-            x = x[mask]
-        k = (~jnp.isnan(x)).sum(1)[..., -1]
+        k = (~jnp.isnan(x)).sum(0)[..., -1] 
+
         assert x.shape[-1] == self.dim, "wrong dimensionality"
-        logl = - k * self.norm -jnp.diff(self.kbounds) # log (1 / (kmin-kmax) * V**(-n) )  -- I think the minus sign is already in norm
+
+        logl = k * self.norm - jnp.log(jnp.diff(self.kbounds)) # log (1 / (kmin-kmax) * V**(-n) ) -- Minus sign in self.norm
+
         return logl
 
     def __call__(self, x):
