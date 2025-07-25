@@ -214,7 +214,7 @@ class NormalizingFlowProposal:
         if self.rescale:
             # Rescale to zero mean and unit variance
             x = (x - self.mean) / self.std
-            log_j = log_j + jnp.sum(jnp.log(self.std))
+            log_j = log_j - jnp.sum(jnp.log(self.std))
         log_prob = self._annealed_flow.log_prob(x) + log_j
         return log_prob
 
