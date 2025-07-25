@@ -1,5 +1,6 @@
 import jax
 jax.config.update("jax_enable_x64", True)
+import numpy as np
 import jax.numpy as jnp
 import time
 import tqdm
@@ -299,3 +300,93 @@ class PerfectSampler:
             return samples, t_vals
         else:
             return samples
+
+
+class RejectionSampler:
+    """
+    A class for performing rejection sampling from a target distribution
+    using a proposal distribution.
+
+    This class implements the rejection sampling algorithm to generate samples
+    from the target distribution.
+    """
+
+    def __init__(self, target, proposal, constant, seed=None):
+        """
+        INPUTS:
+        -------
+        target : callable
+            The log-posterior PDF of the target distribution.
+        proposal : class
+            The proposal distribution.
+            This must have a method `proposal.sample(subkey)` that returns a 
+            sample from the proposal, jax.ndarray shape=(dim,).
+        constant : float
+            The constant C which corresponds to the maximum of the ratio
+            P(x)/Q(x) over the support of the proposal distribution.
+        seed : int, optional
+            The random seed for reproducibility.
+            Default is None, which uses a seed set using the clock.
+        """
+        self.target = target
+        self.proposal = proposal
+        self.constant = constant
+        self.log_constant = jnp.log(constant)
+
+        assert self.target.dim == self.proposal.dim, \
+            "Target and proposal must have the same dimensionality."
+        self.dim = self.target.dim
+
+        self.key = jax.random.key(int(time.time()) if seed is None else seed)
+
+    def sample(self, num_samples, batch_size=None, return_efficiency=False):
+        """Sample from the target distribution using rejection sampling.
+
+        INPUTS
+        ------
+        num_samples : int
+            The number of samples to generate from the target distribution.
+        batch_size : int, optional
+            The number of samples to propose in each batch. If None, defaults to 5 times num_samples.
+        return_efficiency : bool, optional
+            If True, return the efficiency of the sampling process.
+
+        RETURNS
+        -------
+        samples : jnp.ndarray
+            Samples from the target distribution, shape=(num_samples, dim).
+        efficiency : float, optional
+            Only returned if return_efficiency is True. The efficiency of the sampling process,
+        """
+
+        proposal_fn = eqx.filter_jit(self.proposal.sample)
+        proposal_pdf = eqx.filter_jit(self.proposal.logP)
+
+        if batch_size is None:
+            batch_size = int(5 * num_samples)
+        collected = []
+        total = 0
+        proposed = 0
+
+        while total < num_samples:
+            self.key, subkey = jax.random.split(self.key)
+            x = proposal_fn(subkey, batch_size)  # (batch_size, dim)
+            u = jax.random.uniform(subkey, (batch_size,))
+
+            # x is a DeviceArray — convert to NumPy to call target_fn
+            x_np = np.asarray(x)
+            t_vals = np.asarray(self.target(x_np))
+            p_vals = np.asarray(proposal_pdf(x))
+
+            accept = jnp.log(u) < (t_vals - p_vals - self.log_constant)
+            accepted = x[accept]
+            collected.append(accepted)
+
+            total += accepted.shape[0]
+            proposed += batch_size
+
+        if return_efficiency:
+            efficiency = total / proposed
+            return jnp.concatenate(collected)[:num_samples], efficiency
+        else:
+            return jnp.concatenate(collected)[:num_samples]
